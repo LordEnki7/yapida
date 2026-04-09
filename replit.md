@@ -1,8 +1,14 @@
-# Workspace
+# Que Lo Que — Dominican Delivery App
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+"Que Lo Que" — a Dominican delivery app (like Uber Eats for the DR) with bold street energy.
+Brand: black & yellow (#FFD700), bold, gritty, urban. NOT corporate.
+Tagline: "Que lo que… ¿qué tú quieres?"
+Four distinct user modes: customer, driver, business, admin.
+Logo: motorcycle with lightning bolt.
+
+pnpm workspace monorepo using TypeScript.
 
 ## Stack
 
@@ -14,6 +20,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
+- **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
+- **Routing**: wouter
+- **Data fetching**: TanStack Query v5 + auto-generated hooks
+- **Auth**: express-session (session-based), stored user in localStorage "qlq_user"
 - **Build**: esbuild (CJS bundle)
 
 ## Key Commands
@@ -23,5 +33,71 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
+
+## App Architecture
+
+### Backend (`artifacts/api-server`)
+- Express 5 API server at `/api/`
+- Routes: auth, businesses, products, orders, drivers, admin, stats
+- Session-based auth using `express-session`, `credentials: include` required
+- Cash limit system: >8000 DOP = red warning, >10000 DOP = driver locked
+
+### Frontend (`artifacts/que-lo-que`)
+- Single-page app with wouter routing
+- `lib/auth.ts` — getStoredUser/setStoredUser/clearStoredUser + formatDOP
+- `lib/cart.tsx` — CartProvider, useCart with localStorage persistence
+- `components/BottomNav.tsx` — role-aware bottom navigation
+
+### Routes
+| Path | Component | Role |
+|------|-----------|------|
+| `/` | Landing | all |
+| `/login` | Login | all |
+| `/customer` | Customer Home | customer |
+| `/customer/business/:id` | Business Store | customer |
+| `/customer/cart` | Cart | customer |
+| `/customer/orders` | Order List | customer |
+| `/customer/orders/:id` | Order Detail | customer |
+| `/driver` | Driver Dashboard | driver |
+| `/driver/jobs` | Available Jobs | driver |
+| `/driver/wallet` | Driver Wallet | driver |
+| `/business` | Business Dashboard | business |
+| `/business/orders` | Order Management | business |
+| `/business/menu` | Menu Management | business |
+| `/admin` | Admin Control Panel | admin |
+| `/admin/users` | User Management | admin |
+| `/admin/drivers` | Driver Management | admin |
+| `/admin/businesses` | Business Management | admin |
+| `/admin/orders` | All Orders | admin |
+
+## Demo Credentials
+All seeded in the database:
+- customer@qlq.do / password123
+- driver@qlq.do / password123
+- business@qlq.do / password123
+- admin@qlq.do / password123
+
+## Seed Data
+- 4 businesses: Pollo Rey (food), Supermercados Nacional (supermarket), Farmacia Carol (pharmacy), La Cava del Rey (liquor)
+- 14 products across businesses
+- 3 sample orders, wallet transactions
+
+## Business Logic
+- Delivery fee: 100 DOP base + 25/km
+- Commission: 15% of order total
+- Driver earns: 75% of delivery fee
+- Cash limit: >8000 DOP warning, >10000 DOP = driver locked
+- Bonus: every 10 deliveries completed
+- Currency: Dominican Peso (DOP), formatted as "RD$ 1,200"
+
+## API Hooks Pattern
+Generated hooks via Orval from OpenAPI spec:
+```typescript
+// Always pass queryKey when using options
+useListBusinesses(params, { query: { queryKey: getListBusinessesQueryKey(params) } })
+
+// Admin hooks use "Admin" prefix
+useAdminListUsers(params, { query: { queryKey: getAdminListUsersQueryKey() } })
+```
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

@@ -1,0 +1,222 @@
+💰 1. DRIVER PAYOUT SYSTEM (EXACT FORMULAS)
+
+This is the HEART of your business. If this breaks → your company breaks.
+
+🧠 Core Model (Simple but powerful)
+Each order has:
+Order Total (OT)
+Delivery Fee (DF)
+Platform Commission (PC)
+Driver Earnings (DE)
+Cash Collected (CC)
+🔢 FORMULAS (LOCK THESE IN)
+1. Platform Commission
+PC = OT × 15% (or 10–20% range)
+2. Driver Earnings
+DE = DF + (Optional Tip)
+
+👉 Example:
+
+Delivery fee = 150 DOP
+Tip = 50 DOP
+Driver earns = 200 DOP
+3. Cash Collected (if customer pays cash)
+CC = OT + DF
+4. Driver Wallet Balance
+Driver Wallet = Total Earnings - Cash Collected Owed
+
+👉 Example:
+
+Driver collected: 5,000 DOP cash
+Driver earnings: 1,500 DOP
+Wallet = 1,500 - 5,000 = -3,500 DOP
+
+👉 That means:
+Driver owes YOU 3,500 DOP
+
+🔐 PROTECTION RULES (NON-NEGOTIABLE)
+✅ Rule 1: Cash Limit
+Max Cash Holding = 10,000 DOP
+
+→ If exceeded:
+👉 Driver gets auto-locked
+
+✅ Rule 2: Settlement System
+Daily or weekly cash drop
+Pay via:
+Bank transfer
+Agent pickup
+Local office
+✅ Rule 3: Trust Score
+Late deliveries = penalty
+Cancellations = penalty
+High rating = bonus
+💡 BONUS (THIS IS HOW YOU WIN DR)
+Driver Gamification:
+10 deliveries = +500 DOP bonus
+Fast delivery bonus
+Peak hour multiplier
+
+👉 DR drivers hustle for incentives… not rules.
+
+📱 2. UI WIREFRAMES (READY TO DESIGN)
+
+Let’s design like a real product team.
+
+👤 CUSTOMER APP
+🏠 Home Screen
+
+Sections:
+
+Categories:
+🍔 Food
+🛒 Supermarket
+🍾 Liquor
+💊 Pharmacy
+Search bar
+Featured stores
+🛍️ Store Page
+
+Features:
+
+Menu / products
+Add to cart
+Store rating
+🛒 Checkout Screen
+
+Options:
+
+Pay Cash 💵
+Pay Card 💳
+Delivery address
+Notes
+🚚 Live Tracking Screen
+
+Features:
+
+Driver on map
+ETA
+Call / WhatsApp
+🛵 DRIVER APP
+📲 Driver Dashboard
+
+Features:
+
+Accept job
+Earnings today
+Wallet balance
+Online/Offline toggle
+📦 Delivery Flow
+1. Accept order
+2. Navigate to store
+3. Confirm pickup
+4. Deliver
+5. Confirm delivery
+
+👉 Add:
+
+Photo proof OR code verification
+🏪 BUSINESS DASHBOARD
+📊 Business Panel
+
+Features:
+
+Orders incoming
+Accept / reject
+Menu management
+Sales tracking
+🚀 3. GO-TO-MARKET PLAN (DOMINICAN REPUBLIC STREET STRATEGY)
+
+This is where MOST people fail…
+
+Let’s not be them.
+
+📍 STEP 1: PICK ONE CITY
+
+👉 Start with:
+
+Santo Domingo OR
+Santiago OR
+Punta Cana
+
+⚠️ DO NOT GO NATIONWIDE FIRST
+
+🛵 STEP 2: DRIVER ARMY (FIRST PRIORITY)
+
+Target:
+
+20–50 moto drivers
+How to recruit:
+Gas stations ⛽
+Moto taxi hubs
+Facebook groups (DR drivers)
+WhatsApp groups
+
+👉 Pitch:
+“Make money daily with your motor”
+
+🏪 STEP 3: BUSINESS ONBOARDING
+
+Target:
+
+15–30 businesses
+Go door-to-door:
+Restaurants
+Colmados
+Liquor stores
+Pharmacies
+
+👉 Offer:
+
+0% commission first 30 days
+Free promotion
+📲 STEP 4: CUSTOMER ACQUISITION
+STREET LEVEL (THIS WORKS IN DR)
+Flyers with QR codes
+Promo codes:
+FIRST ORDER FREE DELIVERY
+Influencers (small local ones)
+WhatsApp broadcast lists
+💬 STEP 5: WHATSAPP DOMINATION
+
+This is CRITICAL.
+
+Komida even uses WhatsApp to communicate with users and drivers.
+
+👉 You go deeper:
+
+Order confirmations via WhatsApp
+Driver alerts
+Customer support
+💣 STEP 6: LAUNCH STRATEGY
+Week 1:
+Soft launch
+Test with 20 users
+Week 2:
+Push marketing
+Driver incentives
+Week 3:
+Scale to 100+ users
+🧠 FINAL TRUTH (NO FILTER)
+
+Komida works because:
+
+Simple
+Local
+Fast
+Cash + card supported
+
+BUT…
+
+👉 It’s still basic
+👉 Not optimized
+👉 Not scalable
+
+💥 YOUR ADVANTAGE
+
+You’re building:
+
+Better logistics
+Better driver system
+Better cash handling
+Better growth engine

@@ -3,20 +3,35 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Que Lo Que delivery platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: customers
+    description: Customer operations
+  - name: businesses
+    description: Business operations
+  - name: products
+    description: Product/menu operations
+  - name: orders
+    description: Order management
+  - name: drivers
+    description: Driver operations
+  - name: admin
+    description: Admin operations
+  - name: stats
+    description: Stats and analytics
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +39,680 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserBody"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginUserBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Logout user
+      responses:
+        "200":
+          description: Logged out
+
+  # BUSINESSES
+  /businesses:
+    get:
+      operationId: listBusinesses
+      tags: [businesses]
+      summary: List all active businesses
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [food, supermarket, pharmacy, liquor, all]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of businesses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Business"
+    post:
+      operationId: createBusiness
+      tags: [businesses]
+      summary: Create a business (for business owners)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBusinessBody"
+      responses:
+        "201":
+          description: Business created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  /businesses/{businessId}:
+    get:
+      operationId: getBusiness
+      tags: [businesses]
+      summary: Get a business by ID
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Business details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+    patch:
+      operationId: updateBusiness
+      tags: [businesses]
+      summary: Update business info
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBusinessBody"
+      responses:
+        "200":
+          description: Updated business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  /businesses/mine:
+    get:
+      operationId: getMyBusiness
+      tags: [businesses]
+      summary: Get the current user's business
+      responses:
+        "200":
+          description: My business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  # PRODUCTS
+  /businesses/{businessId}/products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products for a business
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product for a business
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /businesses/{businessId}/products/{productId}:
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBody"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ORDERS
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders for current user (role-based)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, picked_up, delivered, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Place a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order by ID
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{orderId}/status:
+    patch:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Update order status (business/driver/admin)
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusBody"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{orderId}/rate:
+    post:
+      operationId: rateOrder
+      tags: [orders]
+      summary: Rate a completed order
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateOrderBody"
+      responses:
+        "200":
+          description: Rating submitted
+
+  # DRIVERS
+  /drivers/register:
+    post:
+      operationId: registerDriver
+      tags: [drivers]
+      summary: Register as a driver
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDriverBody"
+      responses:
+        "201":
+          description: Driver registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+
+  /drivers/me:
+    get:
+      operationId: getMyDriver
+      tags: [drivers]
+      summary: Get current driver profile
+      responses:
+        "200":
+          description: Driver profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+
+  /drivers/me/status:
+    patch:
+      operationId: updateDriverStatus
+      tags: [drivers]
+      summary: Toggle driver online/offline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDriverStatusBody"
+      responses:
+        "200":
+          description: Driver status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+
+  /drivers/me/location:
+    patch:
+      operationId: updateDriverLocation
+      tags: [drivers]
+      summary: Update driver GPS location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDriverLocationBody"
+      responses:
+        "200":
+          description: Location updated
+
+  /drivers/me/wallet:
+    get:
+      operationId: getDriverWallet
+      tags: [drivers]
+      summary: Get driver wallet & earnings
+      responses:
+        "200":
+          description: Wallet info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverWallet"
+
+  /drivers/me/wallet/transactions:
+    get:
+      operationId: getDriverTransactions
+      tags: [drivers]
+      summary: Get driver wallet transaction history
+      responses:
+        "200":
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WalletTransaction"
+
+  /drivers/available-jobs:
+    get:
+      operationId: getAvailableJobs
+      tags: [drivers]
+      summary: Get available delivery jobs near driver
+      responses:
+        "200":
+          description: Available orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /drivers/jobs/{orderId}/accept:
+    post:
+      operationId: acceptJob
+      tags: [drivers]
+      summary: Accept a delivery job
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /drivers/jobs/{orderId}/decline:
+    post:
+      operationId: declineJob
+      tags: [drivers]
+      summary: Decline a delivery job
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job declined
+
+  # ADMIN
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [customer, driver, business, admin]
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /admin/users/{userId}/ban:
+    post:
+      operationId: adminBanUser
+      tags: [admin]
+      summary: Ban or unban a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanUserBody"
+      responses:
+        "200":
+          description: User status updated
+
+  /admin/drivers:
+    get:
+      operationId: adminListDrivers
+      tags: [admin]
+      summary: List all drivers with wallet info
+      responses:
+        "200":
+          description: Drivers with wallet data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DriverWithUser"
+
+  /admin/drivers/{driverId}/lock:
+    post:
+      operationId: adminLockDriver
+      tags: [admin]
+      summary: Lock/unlock a driver
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LockDriverBody"
+      responses:
+        "200":
+          description: Driver lock status updated
+
+  /admin/orders:
+    get:
+      operationId: adminListOrders
+      tags: [admin]
+      summary: List all orders with full details
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /admin/businesses:
+    get:
+      operationId: adminListBusinesses
+      tags: [admin]
+      summary: List all businesses (active and inactive)
+      responses:
+        "200":
+          description: All businesses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Business"
+
+  /admin/businesses/{businessId}/toggle:
+    post:
+      operationId: adminToggleBusiness
+      tags: [admin]
+      summary: Activate or deactivate a business
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Business status toggled
+
+  # STATS
+  /stats/platform:
+    get:
+      operationId: getPlatformStats
+      tags: [stats]
+      summary: Get platform-wide stats for admin dashboard
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
+  /stats/business:
+    get:
+      operationId: getBusinessStats
+      tags: [stats]
+      summary: Get stats for business owner dashboard
+      responses:
+        "200":
+          description: Business stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessStats"
+
+  /stats/driver:
+    get:
+      operationId: getDriverStats
+      tags: [stats]
+      summary: Get stats for driver dashboard
+      responses:
+        "200":
+          description: Driver stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +723,643 @@ components:
       required:
         - status
 
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [customer, driver, business, admin]
+        isBanned:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - role
+        - isBanned
+        - createdAt
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    RegisterUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [customer, driver, business]
+      required:
+        - name
+        - email
+        - password
+        - role
+
+    LoginUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    Business:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          enum: [food, supermarket, pharmacy, liquor]
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        imageUrl:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        isActive:
+          type: boolean
+        rating:
+          type: number
+        totalOrders:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - name
+        - category
+        - address
+        - isActive
+        - createdAt
+
+    CreateBusinessBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+          enum: [food, supermarket, pharmacy, liquor]
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        imageUrl:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+      required:
+        - name
+        - category
+        - address
+
+    UpdateBusinessBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        imageUrl:
+          type: string
+        isActive:
+          type: boolean
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        businessId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        category:
+          type: string
+        isAvailable:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - businessId
+        - name
+        - price
+        - isAvailable
+        - createdAt
+
+    CreateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        category:
+          type: string
+      required:
+        - name
+        - price
+
+    UpdateProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        category:
+          type: string
+        isAvailable:
+          type: boolean
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        businessId:
+          type: integer
+        driverId:
+          type: integer
+        status:
+          type: string
+          enum: [pending, accepted, picked_up, delivered, cancelled]
+        totalAmount:
+          type: number
+        deliveryFee:
+          type: number
+        commission:
+          type: number
+        driverEarnings:
+          type: number
+        paymentMethod:
+          type: string
+          enum: [cash, card]
+        isPaid:
+          type: boolean
+        deliveryAddress:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        business:
+          $ref: "#/components/schemas/Business"
+        customer:
+          $ref: "#/components/schemas/User"
+        driver:
+          $ref: "#/components/schemas/Driver"
+        customerRating:
+          type: integer
+        driverRating:
+          type: integer
+        businessRating:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - customerId
+        - businessId
+        - status
+        - totalAmount
+        - deliveryFee
+        - paymentMethod
+        - isPaid
+        - deliveryAddress
+        - createdAt
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+      required:
+        - id
+        - orderId
+        - productName
+        - quantity
+        - price
+
+    CreateOrderBody:
+      type: object
+      properties:
+        businessId:
+          type: integer
+        paymentMethod:
+          type: string
+          enum: [cash, card]
+        deliveryAddress:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+      required:
+        - businessId
+        - paymentMethod
+        - deliveryAddress
+        - items
+
+    OrderItemInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantity:
+          type: integer
+      required:
+        - productId
+        - quantity
+
+    UpdateOrderStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [accepted, picked_up, delivered, cancelled]
+      required:
+        - status
+
+    RateOrderBody:
+      type: object
+      properties:
+        driverRating:
+          type: integer
+        businessRating:
+          type: integer
+        comment:
+          type: string
+      required:
+        - driverRating
+        - businessRating
+
+    Driver:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        isOnline:
+          type: boolean
+        isLocked:
+          type: boolean
+        rating:
+          type: number
+        acceptanceRate:
+          type: number
+        currentLat:
+          type: number
+        currentLng:
+          type: number
+        cashBalance:
+          type: number
+        walletBalance:
+          type: number
+        totalDeliveries:
+          type: integer
+        createdAt:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - id
+        - userId
+        - isOnline
+        - isLocked
+        - rating
+        - acceptanceRate
+        - cashBalance
+        - walletBalance
+        - totalDeliveries
+        - createdAt
+
+    DriverWithUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        isOnline:
+          type: boolean
+        isLocked:
+          type: boolean
+        rating:
+          type: number
+        acceptanceRate:
+          type: number
+        cashBalance:
+          type: number
+        walletBalance:
+          type: number
+        totalDeliveries:
+          type: integer
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - id
+        - userId
+        - isOnline
+        - isLocked
+        - rating
+        - acceptanceRate
+        - cashBalance
+        - walletBalance
+        - totalDeliveries
+        - user
+
+    RegisterDriverBody:
+      type: object
+      properties:
+        vehicleType:
+          type: string
+        vehiclePlate:
+          type: string
+      required:
+        - vehicleType
+
+    UpdateDriverStatusBody:
+      type: object
+      properties:
+        isOnline:
+          type: boolean
+      required:
+        - isOnline
+
+    UpdateDriverLocationBody:
+      type: object
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+      required:
+        - lat
+        - lng
+
+    DriverWallet:
+      type: object
+      properties:
+        walletBalance:
+          type: number
+        cashBalance:
+          type: number
+        totalEarningsToday:
+          type: number
+        totalEarningsWeek:
+          type: number
+        deliveriesToday:
+          type: integer
+        deliveriesWeek:
+          type: integer
+        pendingBonus:
+          type: number
+        cashLimitReached:
+          type: boolean
+      required:
+        - walletBalance
+        - cashBalance
+        - totalEarningsToday
+        - totalEarningsWeek
+        - deliveriesToday
+        - deliveriesWeek
+        - pendingBonus
+        - cashLimitReached
+
+    WalletTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        driverId:
+          type: integer
+        type:
+          type: string
+          enum: [earning, cash_collected, adjustment, bonus, settlement]
+        amount:
+          type: number
+        description:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - driverId
+        - type
+        - amount
+        - createdAt
+
+    BanUserBody:
+      type: object
+      properties:
+        isBanned:
+          type: boolean
+      required:
+        - isBanned
+
+    LockDriverBody:
+      type: object
+      properties:
+        isLocked:
+          type: boolean
+      required:
+        - isLocked
+
+    PlatformStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalDrivers:
+          type: integer
+        totalBusinesses:
+          type: integer
+        totalOrders:
+          type: integer
+        ordersToday:
+          type: integer
+        revenueToday:
+          type: number
+        revenueWeek:
+          type: number
+        activeDrivers:
+          type: integer
+        pendingOrders:
+          type: integer
+        avgDeliveryTime:
+          type: number
+      required:
+        - totalUsers
+        - totalDrivers
+        - totalBusinesses
+        - totalOrders
+        - ordersToday
+        - revenueToday
+        - revenueWeek
+        - activeDrivers
+        - pendingOrders
+
+    BusinessStats:
+      type: object
+      properties:
+        totalOrders:
+          type: integer
+        ordersToday:
+          type: integer
+        ordersWeek:
+          type: integer
+        revenueToday:
+          type: number
+        revenueWeek:
+          type: number
+        revenueTotal:
+          type: number
+        avgRating:
+          type: number
+        pendingOrders:
+          type: integer
+        topProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopProduct"
+      required:
+        - totalOrders
+        - ordersToday
+        - ordersWeek
+        - revenueToday
+        - revenueWeek
+        - revenueTotal
+        - pendingOrders
+
+    DriverStats:
+      type: object
+      properties:
+        deliveriesToday:
+          type: integer
+        deliveriesWeek:
+          type: integer
+        deliveriesTotal:
+          type: integer
+        earningsToday:
+          type: number
+        earningsWeek:
+          type: number
+        earningsTotal:
+          type: number
+        avgRating:
+          type: number
+        currentStreak:
+          type: integer
+        nextBonusAt:
+          type: integer
+        bonusProgress:
+          type: number
+      required:
+        - deliveriesToday
+        - deliveriesWeek
+        - deliveriesTotal
+        - earningsToday
+        - earningsWeek
+        - earningsTotal
+        - avgRating
+        - currentStreak
+        - nextBonusAt
+        - bonusProgress
+
+    TopProduct:
+      type: object
+      properties:
+        productId:
+          type: integer
+        productName:
+          type: string
+        totalSold:
+          type: integer
+        revenue:
+          type: number
+      required:
+        - productId
+        - productName
+        - totalSold
+        - revenue

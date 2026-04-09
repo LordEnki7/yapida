@@ -1,0 +1,26 @@
+import { pgTable, text, serial, timestamp, boolean, integer, real } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+import { usersTable } from "./users";
+
+export const businessesTable = pgTable("businesses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  name: text("name").notNull(),
+  category: text("category").notNull().default("food"),
+  description: text("description"),
+  address: text("address").notNull(),
+  phone: text("phone"),
+  imageUrl: text("image_url"),
+  lat: real("lat"),
+  lng: real("lng"),
+  isActive: boolean("is_active").notNull().default(true),
+  rating: real("rating").notNull().default(5.0),
+  totalOrders: integer("total_orders").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const insertBusinessSchema = createInsertSchema(businessesTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertBusiness = z.infer<typeof insertBusinessSchema>;
+export type Business = typeof businessesTable.$inferSelect;

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Que Lo Que"
+version = "1.0.0"
+id = "artifacts/que-lo-que"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21512
+
+[services.development]
+run = "pnpm --filter @workspace/que-lo-que run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/que-lo-que", "run", "build" ]
+publicDir = "artifacts/que-lo-que/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21512"
+BASE_PATH = "/"
