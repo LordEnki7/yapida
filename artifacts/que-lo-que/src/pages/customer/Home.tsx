@@ -7,7 +7,7 @@ import LangToggle from "@/components/LangToggle";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Star, MapPin, Clock } from "lucide-react";
+import { Search, Star, Clock } from "lucide-react";
 
 export default function CustomerHome() {
   const user = getStoredUser();

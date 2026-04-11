@@ -76,6 +76,25 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   res.json(formatUser(user));
 });
 
+router.put("/auth/me", async (req, res): Promise<void> => {
+  const sessionUserId = (req.session as any)?.userId;
+  if (!sessionUserId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const { name, phone } = req.body;
+  if (!name || typeof name !== "string" || name.trim().length < 2) {
+    res.status(400).json({ error: "Name must be at least 2 characters" });
+    return;
+  }
+  const [updated] = await db
+    .update(usersTable)
+    .set({ name: name.trim(), phone: phone?.trim() || null })
+    .where(eq(usersTable.id, sessionUserId))
+    .returning();
+  res.json(formatUser(updated));
+});
+
 router.post("/auth/logout", async (req, res): Promise<void> => {
   (req.session as any).userId = undefined;
   res.json({ success: true });

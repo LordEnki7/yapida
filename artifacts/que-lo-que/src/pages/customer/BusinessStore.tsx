@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "wouter";
 import { useGetBusiness, getGetBusinessQueryKey, useListProducts, getListProductsQueryKey } from "@workspace/api-client-react";
 import { useCart } from "@/lib/cart";
@@ -8,7 +8,8 @@ import LangToggle from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Star, ShoppingCart, Plus, Minus, X, ShoppingBag } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Star, ShoppingCart, Plus, X, ShoppingBag, Search } from "lucide-react";
 
 const MARKUP = 0.15;
 
@@ -22,6 +23,7 @@ export default function BusinessStore() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [sheetQty, setSheetQty] = useState(1);
+  const [productSearch, setProductSearch] = useState("");
   const { addItem, items, totalAmount } = useCart();
   const { t } = useLang();
 
@@ -56,12 +58,23 @@ export default function BusinessStore() {
     setQuantities(prev => ({ ...prev, [product.id]: 1 }));
   };
 
-  const groupedProducts = products?.reduce((acc: Record<string, any[]>, p) => {
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    const q = productSearch.toLowerCase().trim();
+    if (!q) return products;
+    return products.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q) ||
+      (p.category ?? "").toLowerCase().includes(q)
+    );
+  }, [products, productSearch]);
+
+  const groupedProducts = filteredProducts.reduce((acc: Record<string, any[]>, p) => {
     const cat = p.category || "Productos";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(p);
     return acc;
-  }, {}) ?? {};
+  }, {});
 
   if (bizLoading) return (
     <div className="min-h-screen bg-background p-4">
@@ -107,6 +120,19 @@ export default function BusinessStore() {
           </div>
           <p className="text-gray-500 text-xs mt-2">📍 {business?.address}</p>
         </div>
+
+        {/* Product Search */}
+        {!prodsLoading && (products?.length ?? 0) > 4 && (
+          <div className="relative mb-4">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Buscar en el menú..."
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+              className="pl-9 bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 h-10 text-sm"
+            />
+          </div>
+        )}
 
         {/* Products */}
         {prodsLoading ? (
