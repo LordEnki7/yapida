@@ -322,42 +322,32 @@ export default function CustomerCart() {
           </div>
         </div>
 
-        {/* Tip */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Star size={16} className="text-yellow-400" />
-            <h3 className="font-bold">Propina al repartidor</h3>
-            <span className="text-xs text-yellow-400/60 ml-auto font-bold">100% al driver</span>
+        {/* Order Summary */}
+        <div className="bg-white/8 border border-white/10 rounded-2xl p-4 space-y-2">
+          <div className="flex justify-between text-sm text-gray-300">
+            <span>{items.length} {items.length === 1 ? "artículo" : "artículos"}</span>
+            <span>{formatDOP(markedUpTotal)}</span>
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            {TIP_PRESETS.map(p => (
-              <button
-                key={p}
-                onClick={() => { setTip(p); setShowCustomTip(false); setCustomTip(""); }}
-                className={`py-2 rounded-xl text-sm font-bold border transition ${!showCustomTip && tip === p ? "border-yellow-400 bg-yellow-400/20 text-yellow-400" : "border-white/10 bg-white/8 text-gray-300 hover:bg-white/10"}`}
-              >
-                {p === 0 ? "Sin propina" : formatDOP(p)}
-              </button>
-            ))}
+          <div className="flex justify-between text-sm text-gray-300">
+            <span>{t.delivery}</span>
+            <span>{formatDOP(DELIVERY_FEE)}</span>
           </div>
-          <button
-            onClick={() => { setShowCustomTip(!showCustomTip); setTip(0); }}
-            className={`mt-2 w-full py-2 rounded-xl text-sm font-bold border transition ${showCustomTip ? "border-yellow-400 bg-yellow-400/20 text-yellow-400" : "border-white/10 bg-white/8 text-gray-300 hover:bg-white/10"}`}
-          >
-            Otra cantidad
-          </button>
-          {showCustomTip && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-gray-400 text-sm font-bold">RD$</span>
-              <Input
-                type="number"
-                placeholder="0"
-                value={customTip}
-                onChange={(e) => setCustomTip(e.target.value)}
-                className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 h-9"
-              />
+          {promoDiscount > 0 && (
+            <div className="flex justify-between text-sm text-green-400 font-bold">
+              <span>🎟 {appliedPromo?.code}</span>
+              <span>-{formatDOP(promoDiscount)}</span>
             </div>
           )}
+          {activeTip > 0 && (
+            <div className="flex justify-between text-sm text-yellow-400/80">
+              <span>Propina al driver</span>
+              <span>{formatDOP(activeTip)}</span>
+            </div>
+          )}
+          <div className="border-t border-white/10 pt-2 flex justify-between font-black text-lg">
+            <span>{t.total}</span>
+            <span className="text-yellow-400">{formatDOP(Math.max(grandTotal, 0))}</span>
+          </div>
         </div>
 
         {/* Promo Code */}
@@ -399,65 +389,83 @@ export default function CustomerCart() {
           )}
         </div>
 
-        {/* Payment */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl p-4">
-          <p className="font-bold text-sm mb-3">{t.paymentMethod}</p>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Tip — prominent step */}
+        <div className="rounded-2xl p-5 border border-yellow-400/30 bg-yellow-400/5">
+          <p className="text-center font-black text-white text-base mb-1">
+            ¿Quieres dejarle propina a tu driver?
+          </p>
+          <p className="text-center text-xs text-gray-400 mb-4">Opcional · 100% va al repartidor</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {[0, 50, 100, 200].map(p => (
+              <button
+                key={p}
+                onClick={() => { setTip(p); setShowCustomTip(false); setCustomTip(""); }}
+                className={`px-4 py-2 rounded-full text-sm font-black border transition ${!showCustomTip && tip === p ? "bg-yellow-400 text-black border-yellow-400 shadow-[0_0_14px_rgba(255,215,0,0.4)]" : "border-white/20 bg-white/8 text-gray-300 hover:border-yellow-400/40"}`}
+              >
+                {p === 0 ? "Ahora no" : formatDOP(p)}
+              </button>
+            ))}
             <button
-              onClick={() => setPaymentMethod("cash")}
-              className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-sm font-bold transition ${paymentMethod === "cash" ? "bg-green-400/15 border-green-400/50 text-green-400" : "bg-white/5 border-white/15 text-gray-400 hover:border-white/30"}`}
+              onClick={() => { setShowCustomTip(!showCustomTip); setTip(0); }}
+              className={`px-4 py-2 rounded-full text-sm font-black border transition ${showCustomTip ? "bg-yellow-400 text-black border-yellow-400" : "border-white/20 bg-white/8 text-gray-300 hover:border-yellow-400/40"}`}
             >
-              <Banknote size={16} />
-              Efectivo
-            </button>
-            <button
-              onClick={() => setPaymentMethod("card")}
-              className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-sm font-bold transition ${paymentMethod === "card" ? "bg-blue-400/15 border-blue-400/50 text-blue-400" : "bg-white/5 border-white/15 text-gray-400 hover:border-white/30"}`}
-            >
-              <CreditCard size={16} />
-              Tarjeta
+              Otra cantidad
             </button>
           </div>
-          {paymentMethod === "cash" && (
-            <p className="text-xs text-gray-500 mt-2">Paga al repartidor en efectivo cuando llegue tu pedido.</p>
-          )}
-          {paymentMethod === "card" && (
-            <div className="mt-3 flex items-start gap-2 bg-blue-400/8 border border-blue-400/20 rounded-xl px-3 py-2.5">
-              <Lock size={14} className="text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-black text-blue-400">Próximamente 🔒</p>
-                <p className="text-xs text-gray-400 mt-0.5">El pago con tarjeta estará disponible muy pronto. Por ahora elige efectivo para completar tu pedido.</p>
-              </div>
+          {showCustomTip && (
+            <div className="mt-3 flex items-center gap-2 max-w-xs mx-auto">
+              <span className="text-gray-400 text-sm font-bold">RD$</span>
+              <Input
+                type="number"
+                placeholder="0"
+                value={customTip}
+                onChange={(e) => setCustomTip(e.target.value)}
+                className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 h-9 text-center font-black"
+              />
             </div>
           )}
         </div>
 
-        {/* Order Summary */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl p-4 space-y-2">
-          <div className="flex justify-between text-sm text-gray-300">
-            <span>{t.subtotal}</span>
-            <span>{formatDOP(markedUpTotal)}</span>
+        {/* Payment — two big tiles */}
+        <div>
+          <p className="font-black text-sm text-gray-400 uppercase tracking-widest mb-3">{t.paymentMethod}</p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Cash */}
+            <button
+              onClick={() => setPaymentMethod("cash")}
+              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition font-black ${paymentMethod === "cash" ? "border-yellow-400 bg-yellow-400/10 shadow-[0_0_20px_rgba(255,215,0,0.2)]" : "border-white/15 bg-white/5 hover:border-white/30"}`}
+            >
+              <Banknote size={28} className={paymentMethod === "cash" ? "text-yellow-400" : "text-gray-400"} />
+              <div>
+                <p className={`text-base font-black ${paymentMethod === "cash" ? "text-yellow-400" : "text-gray-300"}`}>
+                  {formatDOP(Math.max(grandTotal, 0))}
+                </p>
+                <p className={`text-xs mt-0.5 ${paymentMethod === "cash" ? "text-yellow-400/70" : "text-gray-500"}`}>Efectivo</p>
+              </div>
+            </button>
+
+            {/* Card — coming soon */}
+            <button
+              onClick={() => setPaymentMethod("card")}
+              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition font-black relative overflow-hidden ${paymentMethod === "card" ? "border-blue-400/50 bg-blue-400/10" : "border-white/15 bg-white/5 hover:border-white/30"}`}
+            >
+              <CreditCard size={28} className="text-gray-500" />
+              <div>
+                <p className="text-base font-black text-gray-500">{formatDOP(Math.max(grandTotal, 0))}</p>
+                <p className="text-xs mt-0.5 text-gray-600">Tarjeta</p>
+              </div>
+              <div className="absolute top-2 right-2 bg-gray-700/80 rounded-full px-1.5 py-0.5">
+                <Lock size={9} className="text-gray-400 inline" />
+                <span className="text-[9px] text-gray-400 font-bold ml-0.5">Próximo</span>
+              </div>
+            </button>
           </div>
-          <div className="flex justify-between text-sm text-gray-300">
-            <span>{t.delivery}</span>
-            <span>{formatDOP(DELIVERY_FEE)}</span>
-          </div>
-          {activeTip > 0 && (
-            <div className="flex justify-between text-sm text-yellow-400/80">
-              <span>Propina al driver</span>
-              <span>{formatDOP(activeTip)}</span>
+          {paymentMethod === "card" && (
+            <div className="mt-3 flex items-start gap-2 bg-blue-400/8 border border-blue-400/20 rounded-xl px-3 py-2.5">
+              <Lock size={14} className="text-blue-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-gray-400">El pago con tarjeta estará disponible muy pronto. Elige efectivo para completar tu pedido.</p>
             </div>
           )}
-          {promoDiscount > 0 && (
-            <div className="flex justify-between text-sm text-green-400 font-bold">
-              <span>🎟 {appliedPromo?.code}</span>
-              <span>-{formatDOP(promoDiscount)}</span>
-            </div>
-          )}
-          <div className="border-t border-white/10 pt-2 flex justify-between font-black text-lg">
-            <span>{t.total}</span>
-            <span className="text-yellow-400">{formatDOP(Math.max(grandTotal, 0))}</span>
-          </div>
         </div>
       </div>
 
