@@ -1,14 +1,13 @@
 import { Link } from "wouter";
 import { useGetPlatformStats, getGetPlatformStatsQueryKey, useAdminListUsers, getAdminListUsersQueryKey } from "@workspace/api-client-react";
 import { formatDOP } from "@/lib/auth";
-import { useLang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
+import { useAdminLang } from "@/lib/lang";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Package, Bike, TrendingUp, Tag, Bot } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { t } = useLang();
+  const { t } = useAdminLang();
   const { data: stats, isLoading: statsLoading } = useGetPlatformStats({
     query: { queryKey: getGetPlatformStatsQueryKey() }
   });
@@ -33,7 +32,6 @@ export default function AdminDashboard() {
             <p className="text-xs text-gray-400 uppercase tracking-widest">QUE LO QUE</p>
             <h1 className="text-2xl font-black text-yellow-400">{t.adminTitle}</h1>
           </div>
-          <LangToggle />
         </div>
       </div>
 

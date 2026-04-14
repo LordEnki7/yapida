@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAdminListBusinesses, getAdminListBusinessesQueryKey, useAdminToggleBusiness } from "@workspace/api-client-react";
-import { useLang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
+import { useAdminLang } from "@/lib/lang";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,7 @@ const DEFAULT_FORM: BizForm = {
 export default function AdminBusinesses() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { t } = useLang();
+  const { t } = useAdminLang();
 
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -129,7 +128,6 @@ export default function AdminBusinesses() {
         </Link>
         <h1 className="text-xl font-black text-yellow-400">{t.businesses}</h1>
         <div className="ml-auto flex items-center gap-2">
-          <LangToggle />
           <Button
             size="sm"
             onClick={() => { setShowCreate(true); setEditingId(null); setForm(DEFAULT_FORM); }}

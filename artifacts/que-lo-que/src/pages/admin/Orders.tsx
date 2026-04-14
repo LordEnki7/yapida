@@ -1,14 +1,13 @@
 import { Link } from "wouter";
 import { useAdminListOrders, getAdminListOrdersQueryKey } from "@workspace/api-client-react";
 import { formatDOP } from "@/lib/auth";
-import { useLang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
+import { useAdminLang } from "@/lib/lang";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Clock } from "lucide-react";
 
 export default function AdminOrders() {
-  const { t } = useLang();
+  const { t } = useAdminLang();
   const { data: orders, isLoading } = useAdminListOrders({
     query: { queryKey: getAdminListOrdersQueryKey() }
   });
@@ -38,9 +37,6 @@ export default function AdminOrders() {
           </button>
         </Link>
         <h1 className="text-xl font-black text-yellow-400">{t.allOrders}</h1>
-        <div className="ml-auto">
-          <LangToggle />
-        </div>
       </div>
 
       <div className="px-4 py-4 space-y-3">

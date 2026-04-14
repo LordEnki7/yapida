@@ -1,8 +1,7 @@
 import { Link } from "wouter";
 import { useAdminListDrivers, getAdminListDriversQueryKey, useAdminLockDriver } from "@workspace/api-client-react";
 import { formatDOP } from "@/lib/auth";
-import { useLang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
+import { useAdminLang } from "@/lib/lang";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function AdminDrivers() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { t } = useLang();
+  const { t } = useAdminLang();
 
   const { data: drivers, isLoading } = useAdminListDrivers({
     query: { queryKey: getAdminListDriversQueryKey() }
@@ -38,9 +37,6 @@ export default function AdminDrivers() {
           </button>
         </Link>
         <h1 className="text-xl font-black text-yellow-400">{t.drivers}</h1>
-        <div className="ml-auto">
-          <LangToggle />
-        </div>
       </div>
 
       <div className="px-4 py-4 space-y-3">

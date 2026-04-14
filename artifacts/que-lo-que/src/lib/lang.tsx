@@ -38,3 +38,10 @@ export function useLang() {
   if (!ctx) throw new Error("useLang must be used within LangProvider");
   return ctx;
 }
+
+/** Admin area is always English. Use this instead of useLang() in admin pages. */
+export function useAdminLang() {
+  const ctx = useContext(LangContext);
+  if (!ctx) throw new Error("useAdminLang must be used within LangProvider");
+  return { lang: "en" as const, setLang: ctx.setLang, t: translations["en"] };
+}

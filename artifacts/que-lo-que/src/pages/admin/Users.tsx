@@ -1,7 +1,6 @@
 import { Link } from "wouter";
 import { useAdminListUsers, getAdminListUsersQueryKey, useAdminBanUser } from "@workspace/api-client-react";
-import { useLang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
+import { useAdminLang } from "@/lib/lang";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,7 @@ export default function AdminUsers() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const { t } = useLang();
+  const { t } = useAdminLang();
 
   const { data: users, isLoading } = useAdminListUsers(
     {},
@@ -52,9 +51,6 @@ export default function AdminUsers() {
           </button>
         </Link>
         <h1 className="text-xl font-black text-yellow-400">{t.users}</h1>
-        <div className="ml-auto">
-          <LangToggle />
-        </div>
       </div>
 
       <div className="px-4 py-4 space-y-3">

@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { formatDOP } from "@/lib/auth";
-import { useLang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
+import { useAdminLang } from "@/lib/lang";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +44,7 @@ const DEFAULT_FORM: ProductForm = {
 export default function AdminBusinessMenu() {
   const { id } = useParams<{ id: string }>();
   const bizId = parseInt(id, 10);
-  const { t } = useLang();
+  const { t } = useAdminLang();
   const { toast } = useToast();
 
   const [business, setBusiness] = useState<Business | null>(null);
@@ -152,7 +151,6 @@ export default function AdminBusinessMenu() {
           {business && <p className="text-xs text-gray-500">{products.length} productos</p>}
         </div>
         <div className="flex items-center gap-2">
-          <LangToggle />
           <Button
             size="sm"
             onClick={() => { setShowForm(true); setEditingId(null); setForm(DEFAULT_FORM); }}
