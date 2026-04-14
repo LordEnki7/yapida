@@ -242,6 +242,12 @@ export default function CustomerProfile() {
               <span className="text-gray-500 text-xs">→</span>
             </div>
           </Link>
+          <Link href="/customer/support">
+            <div className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition cursor-pointer">
+              <span className="text-sm font-bold text-white">🤖 Asistente / Soporte</span>
+              <span className="text-gray-500 text-xs">→</span>
+            </div>
+          </Link>
         </div>
 
         {/* Saved Addresses */}

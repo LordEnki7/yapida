@@ -1,0 +1,391 @@
+import { Router, type IRouter } from "express";
+import { eq, desc, gte, and, isNull, lt } from "drizzle-orm";
+import { db, ordersTable, driversTable, usersTable, businessesTable, orderItemsTable, productsTable } from "@workspace/db";
+
+const router: IRouter = Router();
+
+function requireAdmin(req: any, res: any): boolean {
+  if (!(req.session as any)?.userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
+// ─── 1. DISPATCH AGENT ──────────────────────────────────────────────────────
+// Find best available driver for unassigned accepted orders
+router.get("/agents/dispatch/status", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const unassigned = await db.select().from(ordersTable)
+    .where(and(eq(ordersTable.status, "accepted"), isNull(ordersTable.driverId)));
+
+  const onlineDrivers = await db.select().from(driversTable)
+    .where(and(eq(driversTable.isOnline, true), eq(driversTable.isLocked, false)));
+
+  const recommendations: Array<{ orderId: number; driverId: number; driverName: string; score: number }> = [];
+
+  for (const order of unassigned) {
+    if (onlineDrivers.length === 0) break;
+    const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, order.businessId));
+    let bestDriver = onlineDrivers[0];
+    let bestScore = -1;
+    for (const d of onlineDrivers) {
+      const score = (d.rating ?? 4.5) * 20 + (d.acceptanceRate ?? 80) * 0.5 + (d.totalDeliveries > 100 ? 10 : d.totalDeliveries / 10);
+      if (score > bestScore) { bestScore = score; bestDriver = d; }
+    }
+    const [dUser] = await db.select().from(usersTable).where(eq(usersTable.id, bestDriver.userId));
+    recommendations.push({ orderId: order.id, driverId: bestDriver.id, driverName: dUser?.name ?? "Driver", score: Math.round(bestScore) });
+  }
+
+  res.json({
+    unassignedOrders: unassigned.length,
+    availableDrivers: onlineDrivers.length,
+    recommendations,
+    status: unassigned.length === 0 ? "idle" : onlineDrivers.length === 0 ? "no_drivers" : "active",
+    lastRun: new Date().toISOString(),
+  });
+});
+
+// Execute dispatch — auto-assign best driver to an unassigned order
+router.post("/agents/dispatch/run", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const unassigned = await db.select().from(ordersTable)
+    .where(and(eq(ordersTable.status, "accepted"), isNull(ordersTable.driverId)));
+
+  const onlineDrivers = await db.select().from(driversTable)
+    .where(and(eq(driversTable.isOnline, true), eq(driversTable.isLocked, false)));
+
+  if (onlineDrivers.length === 0) { res.json({ dispatched: 0, message: "No drivers available" }); return; }
+
+  let dispatched = 0;
+  for (const order of unassigned) {
+    let bestDriver = onlineDrivers[0];
+    let bestScore = -1;
+    for (const d of onlineDrivers) {
+      const score = (d.rating ?? 4.5) * 20 + (d.acceptanceRate ?? 80) * 0.5;
+      if (score > bestScore) { bestScore = score; bestDriver = d; }
+    }
+    await db.update(ordersTable).set({ driverId: bestDriver.id }).where(eq(ordersTable.id, order.id));
+    dispatched++;
+  }
+
+  res.json({ dispatched, message: `Auto-dispatched ${dispatched} order(s)` });
+});
+
+// ─── 2. FRAUD DETECTION AGENT ────────────────────────────────────────────────
+router.get("/agents/fraud/status", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const allOrders = await db.select().from(ordersTable).where(gte(ordersTable.createdAt, sevenDaysAgo));
+  const allUsers = await db.select().from(usersTable);
+
+  const alerts: Array<{ type: string; severity: "high" | "medium" | "low"; description: string; entityId?: number; entityName?: string }> = [];
+
+  // Serial cancellers
+  const cancelsByCustomer: Record<number, number> = {};
+  for (const o of allOrders) {
+    if (o.status === "cancelled") {
+      cancelsByCustomer[o.customerId] = (cancelsByCustomer[o.customerId] ?? 0) + 1;
+    }
+  }
+  for (const [uid, count] of Object.entries(cancelsByCustomer)) {
+    if (count >= 3) {
+      const user = allUsers.find(u => u.id === parseInt(uid));
+      alerts.push({ type: "serial_canceller", severity: count >= 5 ? "high" : "medium", description: `${count} cancellations in 7 days`, entityId: parseInt(uid), entityName: user?.name ?? "Unknown" });
+    }
+  }
+
+  // Promo code abuse: same customer with multiple promo orders
+  const promoByCustomer: Record<number, number> = {};
+  for (const o of allOrders) {
+    if ((o as any).promoCode) {
+      promoByCustomer[o.customerId] = (promoByCustomer[o.customerId] ?? 0) + 1;
+    }
+  }
+  for (const [uid, count] of Object.entries(promoByCustomer)) {
+    if (count >= 3) {
+      const user = allUsers.find(u => u.id === parseInt(uid));
+      alerts.push({ type: "promo_abuse", severity: "medium", description: `Used promo codes ${count} times this week`, entityId: parseInt(uid), entityName: user?.name ?? "Unknown" });
+    }
+  }
+
+  // High-value orders from new accounts (< 7 days old)
+  for (const o of allOrders) {
+    if (o.totalAmount > 3000) {
+      const user = allUsers.find(u => u.id === o.customerId);
+      if (user && new Date(user.createdAt) >= sevenDaysAgo) {
+        alerts.push({ type: "high_value_new_account", severity: "high", description: `RD$${Math.round(o.totalAmount)} order from account < 7 days old`, entityId: user.id, entityName: user.name });
+      }
+    }
+  }
+
+  // Locked drivers still trying to be active
+  const lockedDrivers = await db.select().from(driversTable).where(and(eq(driversTable.isLocked, true), eq(driversTable.isOnline, true)));
+  for (const d of lockedDrivers) {
+    const [u] = await db.select().from(usersTable).where(eq(usersTable.id, d.userId));
+    alerts.push({ type: "locked_driver_online", severity: "high", description: `Locked driver is marked online (cash: RD$${Math.round(d.cashBalance)})`, entityId: d.id, entityName: u?.name });
+  }
+
+  res.json({
+    totalAlerts: alerts.length,
+    highSeverity: alerts.filter(a => a.severity === "high").length,
+    alerts: alerts.sort((a, b) => (a.severity === "high" ? -1 : 1)),
+    status: alerts.length === 0 ? "clean" : alerts.some(a => a.severity === "high") ? "critical" : "warning",
+    lastRun: new Date().toISOString(),
+  });
+});
+
+// ─── 3. SURGE PRICING AGENT ──────────────────────────────────────────────────
+router.get("/agents/surge/status", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const [pending, active, onlineDrivers] = await Promise.all([
+    db.select().from(ordersTable).where(eq(ordersTable.status, "pending")),
+    db.select().from(ordersTable).where(eq(ordersTable.status, "accepted")),
+    db.select().from(driversTable).where(eq(driversTable.isOnline, true)),
+  ]);
+
+  const demand = pending.length + active.length;
+  const supply = onlineDrivers.length;
+  const ratio = supply === 0 ? 99 : demand / supply;
+  const surgeMultiplier = ratio > 3 ? 1.5 : ratio > 2 ? 1.25 : ratio > 1.5 ? 1.1 : 1.0;
+  const isSurge = surgeMultiplier > 1.0;
+
+  const hour = new Date().getHours();
+  const isPeakHour = (hour >= 11 && hour <= 14) || (hour >= 18 && hour <= 21);
+
+  res.json({
+    pendingOrders: pending.length,
+    activeOrders: active.length,
+    onlineDrivers: supply,
+    demandSupplyRatio: Math.round(ratio * 100) / 100,
+    surgeMultiplier,
+    isSurge,
+    isPeakHour,
+    recommendation: isSurge ? `Send push to offline drivers. Suggested ${surgeMultiplier}x delivery fee multiplier.` : supply === 0 && demand > 0 ? "No drivers available — push all offline drivers now!" : "Supply is healthy. No surge needed.",
+    status: isSurge ? "surge" : demand === 0 ? "quiet" : "normal",
+    lastRun: new Date().toISOString(),
+  });
+});
+
+// ─── 4. ETA AGENT ────────────────────────────────────────────────────────────
+router.get("/agents/eta/status", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const recentDelivered = await db.select().from(ordersTable)
+    .where(and(eq(ordersTable.status, "delivered"), gte(ordersTable.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))));
+
+  const businesses = await db.select().from(businessesTable);
+  const avgPrepTime = businesses.reduce((s, b) => s + (b.prepTimeMinutes ?? 20), 0) / Math.max(businesses.length, 1);
+
+  const hour = new Date().getHours();
+  const trafficMultiplier = (hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19) ? 1.3 : 1.0;
+
+  const activeOrders = await db.select().from(ordersTable)
+    .where(and(eq(ordersTable.status, "accepted"), isNull(ordersTable.driverId)));
+
+  const baseDelivery = 20;
+  const adjustedDelivery = Math.round(baseDelivery * trafficMultiplier);
+  const suggestedETA = Math.round(avgPrepTime + adjustedDelivery);
+
+  res.json({
+    avgPrepTimeAcrossBusinesses: Math.round(avgPrepTime),
+    trafficMultiplier,
+    suggestedBaseETA: suggestedETA,
+    unassignedOrders: activeOrders.length,
+    totalDeliveredThisWeek: recentDelivered.length,
+    status: "active",
+    lastRun: new Date().toISOString(),
+    note: `During ${trafficMultiplier > 1 ? "peak" : "normal"} traffic. Recommended ETA: ~${suggestedETA} min.`,
+  });
+});
+
+// ─── 5. MENU OPTIMIZER AGENT ─────────────────────────────────────────────────
+router.get("/agents/menu-optimizer/status", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const allItems = await db.select().from(orderItemsTable);
+  const allProducts = await db.select().from(productsTable);
+  const recentOrders = await db.select().from(ordersTable).where(gte(ordersTable.createdAt, thirtyDaysAgo));
+  const recentOrderIds = new Set(recentOrders.map(o => o.id));
+  const recentItems = allItems.filter(i => recentOrderIds.has(i.orderId));
+
+  const soldCounts: Record<number, number> = {};
+  for (const item of recentItems) {
+    if (item.productId) soldCounts[item.productId] = (soldCounts[item.productId] ?? 0) + item.quantity;
+  }
+
+  const insights: Array<{ type: string; severity: "high" | "medium" | "low"; productName: string; productId: number; description: string }> = [];
+
+  for (const product of allProducts) {
+    const sales = soldCounts[product.id] ?? 0;
+    if (sales === 0) {
+      insights.push({ type: "dead_product", severity: "high", productName: product.name, productId: product.id, description: "0 orders in the last 30 days — consider removing or promoting." });
+    } else if (sales < 3) {
+      insights.push({ type: "slow_mover", severity: "medium", productName: product.name, productId: product.id, description: `Only ${sales} sold in 30 days — consider a discount or feature.` });
+    }
+    if (product.isOutOfStock) {
+      insights.push({ type: "out_of_stock", severity: "high", productName: product.name, productId: product.id, description: "Currently out of stock — revenue being lost." });
+    }
+  }
+
+  const topProducts = Object.entries(soldCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([id, qty]) => {
+      const p = allProducts.find(p => p.id === parseInt(id));
+      return { productId: parseInt(id), productName: p?.name ?? "Unknown", quantitySold: qty };
+    });
+
+  res.json({
+    totalProducts: allProducts.length,
+    activeProducts: allProducts.filter(p => !p.isOutOfStock).length,
+    outOfStock: allProducts.filter(p => p.isOutOfStock).length,
+    insights: insights.sort((a, b) => a.severity === "high" ? -1 : 1),
+    topProducts,
+    status: insights.some(i => i.severity === "high") ? "action_needed" : "good",
+    lastRun: new Date().toISOString(),
+  });
+});
+
+// ─── 6. CUSTOMER SUPPORT AGENT ───────────────────────────────────────────────
+router.post("/agents/support/ask", async (req, res): Promise<void> => {
+  const { question, orderId, userId } = req.body ?? {};
+  if (!question) { res.status(400).json({ error: "question required" }); return; }
+
+  const q = question.toLowerCase();
+  let answer = "";
+  let orderInfo: any = null;
+
+  if ((q.includes("pedido") || q.includes("order") || q.includes("estado") || q.includes("dónde")) && orderId) {
+    const id = parseInt(orderId, 10);
+    if (!isNaN(id)) {
+      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+      if (order) {
+        const statusLabels: Record<string, string> = {
+          pending: "pendiente — esperando confirmación del negocio",
+          accepted: "confirmado — siendo preparado 👨‍🍳",
+          picked_up: "en camino con tu driver 🛵",
+          delivered: "entregado ✅",
+          cancelled: "cancelado ❌",
+        };
+        orderInfo = { id: order.id, status: order.status, statusLabel: statusLabels[order.status] ?? order.status };
+        answer = `Tu pedido #${order.id} está ${statusLabels[order.status] ?? order.status}.`;
+      } else {
+        answer = "No encontré ese pedido. Verifica el número e intenta de nuevo.";
+      }
+    }
+  } else if (q.includes("cancelar") || q.includes("cancel")) {
+    answer = "Puedes cancelar tu pedido solo si está en estado 'pendiente'. Ve a Mis Pedidos → toca el pedido → botón Cancelar. Si ya fue confirmado, contáctanos por WhatsApp.";
+  } else if (q.includes("tiempo") || q.includes("cuánto") || q.includes("demora") || q.includes("eta")) {
+    answer = "El tiempo estimado depende del tiempo de preparación del negocio (visible en la pantalla de tracking) más ~20 min de entrega. Normalmente entre 30–60 minutos.";
+  } else if (q.includes("precio") || q.includes("costo") || q.includes("cargo") || q.includes("delivery fee")) {
+    answer = "El costo de delivery es RD$150. Puedes ver el desglose completo en tu carrito antes de confirmar.";
+  } else if (q.includes("pago") || q.includes("efectivo") || q.includes("tarjeta")) {
+    answer = "Actualmente aceptamos efectivo. El pago con tarjeta estará disponible muy pronto. El monto exacto lo verás en tu carrito antes de ordenar.";
+  } else if (q.includes("punto") || q.includes("puntos") || q.includes("recompensa")) {
+    answer = "Ganas 1 punto por cada RD$10 que gastas. Los puntos se pueden canjear por descuentos en próximas órdenes. Ve a tu perfil para ver tu saldo.";
+  } else if (q.includes("driver") || q.includes("repartidor") || q.includes("coro")) {
+    answer = "Nuestros drivers son verificados e independientes. Puedes chatear con tu driver por WhatsApp directamente desde la pantalla de tracking de tu pedido.";
+  } else if (q.includes("negocio") || q.includes("restaurante") || q.includes("horario")) {
+    answer = "Los negocios aparecen en el app cuando están activos. Si un negocio no aparece, puede estar cerrado temporalmente. Intenta más tarde o prueba otro negocio.";
+  } else if (q.includes("promo") || q.includes("código") || q.includes("descuento")) {
+    answer = "Los códigos promo se aplican en el carrito, en la sección '¿Tienes un código?'. Si tu código no funciona, puede estar expirado o ya usaste el límite permitido.";
+  } else if (q.includes("hola") || q.includes("hello") || q.includes("hi") || q.includes("buenas")) {
+    answer = "¡Hola! 👋 Soy el asistente de YaPide. Puedo ayudarte con el estado de tu pedido, precios, cancelaciones, tiempos de entrega y más. ¿En qué te puedo ayudar?";
+  } else {
+    answer = "No estoy seguro de cómo ayudarte con eso. Para soporte directo, contáctanos por WhatsApp. También puedes preguntarme sobre: el estado de tu pedido, cancelaciones, tiempos de entrega, pagos o puntos.";
+  }
+
+  res.json({ answer, orderInfo, escalate: answer.includes("WhatsApp") });
+});
+
+// ─── MONITORING OVERVIEW ──────────────────────────────────────────────────────
+router.get("/agents/overview", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const [allOrders, allDrivers, allBusinesses, allUsers] = await Promise.all([
+    db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt)),
+    db.select().from(driversTable),
+    db.select().from(businessesTable),
+    db.select().from(usersTable),
+  ]);
+
+  const todayOrders = allOrders.filter(o => new Date(o.createdAt) >= todayStart);
+  const weekOrders = allOrders.filter(o => new Date(o.createdAt) >= weekAgo);
+  const deliveredToday = todayOrders.filter(o => o.status === "delivered");
+  const deliveredWeek = weekOrders.filter(o => o.status === "delivered");
+
+  // Revenue (platform commission = 15% markup already built in)
+  const revenueToday = deliveredToday.reduce((s, o) => s + o.commission, 0);
+  const revenueWeek = deliveredWeek.reduce((s, o) => s + o.commission, 0);
+  const revenueTotal = allOrders.filter(o => o.status === "delivered").reduce((s, o) => s + o.commission, 0);
+
+  // GMV (gross)
+  const gmvToday = deliveredToday.reduce((s, o) => s + o.totalAmount + o.deliveryFee, 0);
+  const gmvWeek = deliveredWeek.reduce((s, o) => s + o.totalAmount + o.deliveryFee, 0);
+
+  // Driver health
+  const onlineDrivers = allDrivers.filter(d => d.isOnline);
+  const lockedDrivers = allDrivers.filter(d => d.isLocked);
+
+  // Live order pipeline
+  const pipeline = {
+    pending: allOrders.filter(o => o.status === "pending").length,
+    accepted: allOrders.filter(o => o.status === "accepted").length,
+    picked_up: allOrders.filter(o => o.status === "picked_up").length,
+  };
+
+  // Growth: orders this week vs last week
+  const prevWeekStart = new Date(weekAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const prevWeekOrders = allOrders.filter(o => new Date(o.createdAt) >= prevWeekStart && new Date(o.createdAt) < weekAgo);
+  const ordersGrowth = prevWeekOrders.length === 0 ? 100 : Math.round(((weekOrders.length - prevWeekOrders.length) / prevWeekOrders.length) * 100);
+
+  // 7-day daily breakdown
+  const dailyStats: Array<{ date: string; orders: number; revenue: number }> = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - i);
+    day.setHours(0, 0, 0, 0);
+    const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
+    const dayOrders = allOrders.filter(o => { const d = new Date(o.createdAt); return d >= day && d < nextDay; });
+    dailyStats.push({
+      date: day.toLocaleDateString("es-DO", { weekday: "short", month: "short", day: "numeric" }),
+      orders: dayOrders.length,
+      revenue: dayOrders.filter(o => o.status === "delivered").reduce((s, o) => s + o.commission, 0),
+    });
+  }
+
+  // Recent 10 orders
+  const recentOrders = await Promise.all(allOrders.slice(0, 10).map(async o => {
+    const [biz] = await db.select({ name: businessesTable.name }).from(businessesTable).where(eq(businessesTable.id, o.businessId));
+    return { id: o.id, status: o.status, totalAmount: o.totalAmount, businessName: biz?.name, createdAt: o.createdAt };
+  }));
+
+  res.json({
+    kpi: {
+      revenueToday, revenueWeek, revenueTotal,
+      gmvToday, gmvWeek,
+      ordersToday: todayOrders.length, ordersWeek: weekOrders.length, ordersTotal: allOrders.length,
+      ordersGrowthPct: ordersGrowth,
+      deliveryRateToday: todayOrders.length === 0 ? 0 : Math.round((deliveredToday.length / todayOrders.length) * 100),
+    },
+    users: { total: allUsers.filter(u => u.role === "customer").length, banned: allUsers.filter(u => u.isBanned).length },
+    drivers: { total: allDrivers.length, online: onlineDrivers.length, locked: lockedDrivers.length },
+    businesses: { total: allBusinesses.length, active: allBusinesses.filter(b => b.isActive).length },
+    pipeline,
+    dailyStats,
+    recentOrders,
+    generatedAt: now.toISOString(),
+  });
+});
+
+export default router;

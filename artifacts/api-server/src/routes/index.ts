@@ -12,6 +12,7 @@ import addressesRouter from "./addresses";
 import storageRouter from "./storage";
 import promoCodesRouter from "./promo_codes";
 import pushRouter from "./push";
+import agentsRouter from "./agents";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(addressesRouter);
 router.use(storageRouter);
 router.use(promoCodesRouter);
 router.use(pushRouter);
+router.use(agentsRouter);
 
 export default router;

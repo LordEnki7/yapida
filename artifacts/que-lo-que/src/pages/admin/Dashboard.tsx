@@ -5,7 +5,7 @@ import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Package, Bike, TrendingUp, Tag } from "lucide-react";
+import { Users, Package, Bike, TrendingUp, Tag, Bot } from "lucide-react";
 
 export default function AdminDashboard() {
   const { t } = useLang();
@@ -38,6 +38,22 @@ export default function AdminDashboard() {
       </div>
 
       <div className="px-4 py-4 space-y-4">
+        {/* Command Center CTA */}
+        <Link href="/admin/command-center">
+          <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-2xl p-4 flex items-center justify-between hover:bg-yellow-400/15 transition cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-yellow-400/20 flex items-center justify-center">
+                <Bot size={20} className="text-yellow-400" />
+              </div>
+              <div>
+                <p className="font-black text-yellow-400">Command Center</p>
+                <p className="text-xs text-gray-400">6 agentes de IA · Monitoreo en vivo</p>
+              </div>
+            </div>
+            <span className="text-yellow-400 font-black text-lg">→</span>
+          </div>
+        </Link>
+
         {statsLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 bg-white/8 rounded-2xl" />)}
