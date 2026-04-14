@@ -175,7 +175,16 @@ export default function CustomerOrderDetail() {
             <h2 className="font-bold text-sm text-gray-400 mb-3 uppercase tracking-widest">{t.yourDriver}</h2>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-yellow-400/20 flex items-center justify-center text-2xl">🛵</div>
+                <div className="w-12 h-12 rounded-full bg-yellow-400/20 overflow-hidden flex items-center justify-center text-2xl flex-shrink-0">
+                  {(order.driver as any).photoUrl ? (
+                    <img
+                      src={`/api/storage/objects/${(order.driver as any).photoUrl}`}
+                      alt="Driver"
+                      className="w-full h-full object-cover"
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : "🛵"}
+                </div>
                 <div>
                   <p className="font-black text-white">{order.driver.user?.name ?? "Driver"}</p>
                   <div className="flex items-center gap-1 text-yellow-400">

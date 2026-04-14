@@ -21,6 +21,7 @@ function formatBusiness(b: typeof businessesTable.$inferSelect) {
     isOpen: b.isOpen,
     rating: b.rating,
     totalOrders: b.totalOrders,
+    prepTimeMinutes: b.prepTimeMinutes,
     createdAt: b.createdAt,
   };
 }
@@ -67,6 +68,18 @@ router.post("/businesses", async (req, res): Promise<void> => {
     ...parsed.data,
   }).returning();
   res.status(201).json(formatBusiness(business));
+});
+
+router.patch("/businesses/mine/prep-time", async (req, res): Promise<void> => {
+  const sessionUserId = (req.session as any)?.userId;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { prepTimeMinutes } = req.body;
+  if (typeof prepTimeMinutes !== "number" || prepTimeMinutes < 5 || prepTimeMinutes > 120) {
+    res.status(400).json({ error: "prepTimeMinutes must be between 5 and 120" }); return;
+  }
+  const [business] = await db.update(businessesTable).set({ prepTimeMinutes }).where(eq(businessesTable.userId, sessionUserId)).returning();
+  if (!business) { res.status(404).json({ error: "Business not found" }); return; }
+  res.json(formatBusiness(business));
 });
 
 router.patch("/businesses/:businessId", async (req, res): Promise<void> => {

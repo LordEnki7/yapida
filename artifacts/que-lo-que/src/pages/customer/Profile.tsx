@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
-import { getStoredUser, clearStoredUser, formatDOP } from "@/lib/auth";
+import { getStoredUser, clearStoredUser } from "@/lib/auth";
 import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, User, Phone, Mail, MapPin, LogOut, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, LogOut, Edit2, Check, X, Trash2, Star } from "lucide-react";
+
+interface SavedAddress {
+  id: number;
+  label: string;
+  address: string;
+  isDefault: boolean;
+}
 
 export default function CustomerProfile() {
   const { t } = useLang();
@@ -21,6 +28,42 @@ export default function CustomerProfile() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/customer/addresses", { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(setAddresses)
+      .catch(() => {});
+  }, []);
+
+  const handleDeleteAddress = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await fetch(`/api/customer/addresses/${id}`, { method: "DELETE", credentials: "include" });
+      setAddresses(prev => prev.filter(a => a.id !== id));
+      toast({ title: "Dirección eliminada" });
+    } catch {
+      toast({ title: t.error, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSetDefault = async (addr: SavedAddress) => {
+    try {
+      await fetch("/api/customer/addresses", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: addr.label, address: addr.address, isDefault: true }),
+      });
+      const updated = await fetch("/api/customer/addresses", { credentials: "include" }).then(r => r.json());
+      setAddresses(updated);
+      toast({ title: `"${addr.label}" marcada como predeterminada` });
+    } catch {}
+  };
 
   const { data: me, isLoading } = useGetMe({
     query: { queryKey: getGetMeQueryKey() }
@@ -200,6 +243,49 @@ export default function CustomerProfile() {
             </div>
           </Link>
         </div>
+
+        {/* Saved Addresses */}
+        {addresses.length > 0 && (
+          <div className="bg-white/8 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+              <MapPin size={14} className="text-yellow-400" />
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mis direcciones</h2>
+            </div>
+            <div className="divide-y divide-white/5">
+              {addresses.map((addr) => (
+                <div key={addr.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-white">{addr.label}</p>
+                      {addr.isDefault && (
+                        <span className="text-[10px] bg-yellow-400/15 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full font-bold">predeterminada</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{addr.address}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {!addr.isDefault && (
+                      <button
+                        onClick={() => handleSetDefault(addr)}
+                        className="w-7 h-7 rounded-lg bg-yellow-400/10 flex items-center justify-center hover:bg-yellow-400/20 transition"
+                        title="Marcar como predeterminada"
+                      >
+                        <Star size={12} className="text-yellow-400" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteAddress(addr.id)}
+                      disabled={deletingId === addr.id}
+                      className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center hover:bg-red-500/20 transition"
+                    >
+                      <Trash2 size={12} className="text-red-400" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Logout */}
         <Button

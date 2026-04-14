@@ -9,8 +9,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, ChefHat, TrendingUp } from "lucide-react";
+import { Package, ChefHat, TrendingUp, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export default function BusinessDashboard() {
   const user = getStoredUser();
@@ -47,6 +48,30 @@ export default function BusinessDashboard() {
   const handleLogoUploaded = (objectPath: string) => {
     if (!business) return;
     updateLogo.mutate({ businessId: business.id, data: { imageUrl: `/api/storage/objects/${objectPath}` } });
+  };
+
+  const [prepTime, setPrepTime] = useState<number | null>(null);
+  const [savingPrepTime, setSavingPrepTime] = useState(false);
+
+  const currentPrepTime = prepTime ?? business?.prepTimeMinutes ?? 25;
+
+  const handlePrepTime = async (minutes: number) => {
+    setPrepTime(minutes);
+    setSavingPrepTime(true);
+    try {
+      await fetch("/api/businesses/mine/prep-time", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prepTimeMinutes: minutes }),
+      });
+      queryClient.invalidateQueries({ queryKey: getGetMyBusinessQueryKey() });
+      toast({ title: `⏱ Tiempo de preparación: ${minutes} min` });
+    } catch {
+      toast({ title: t.error, variant: "destructive" });
+    } finally {
+      setSavingPrepTime(false);
+    }
   };
 
   if (bizLoading) return (
@@ -145,6 +170,31 @@ export default function BusinessDashboard() {
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.thisWeekSales}</span>
           </div>
           <p className="text-2xl font-black text-yellow-400">{formatDOP(stats?.salesWeek ?? 0)}</p>
+        </div>
+
+        {/* Prep time selector */}
+        <div className="bg-white/8 border border-white/10 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock size={14} className="text-yellow-400" />
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tiempo de preparación</span>
+            <span className="ml-auto text-yellow-400 font-black text-sm">{currentPrepTime} min</span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[10, 15, 20, 25, 30, 45, 60].map((m) => (
+              <button
+                key={m}
+                onClick={() => handlePrepTime(m)}
+                disabled={savingPrepTime}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all ${
+                  currentPrepTime === m
+                    ? "bg-yellow-400 text-black border-yellow-400 shadow-[0_0_10px_rgba(255,215,0,0.4)]"
+                    : "bg-white/5 text-gray-400 border-white/10 hover:border-yellow-400/40 hover:text-yellow-400"
+                }`}
+              >
+                {m} min
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

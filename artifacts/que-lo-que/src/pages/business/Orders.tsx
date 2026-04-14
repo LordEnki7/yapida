@@ -7,18 +7,51 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef } from "react";
+
+function playOrderAlert() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0, now + i * 0.15);
+      gain.gain.linearRampToValueAtTime(0.3, now + i * 0.15 + 0.05);
+      gain.gain.linearRampToValueAtTime(0, now + i * 0.15 + 0.2);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.2);
+    });
+  } catch {}
+}
 
 export default function BusinessOrders() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useLang();
+  const prevPendingCount = useRef<number | null>(null);
 
   const { data: orders, isLoading } = useListOrders(
     {},
-    { query: { queryKey: getListOrdersQueryKey({}) } }
+    { query: { queryKey: getListOrdersQueryKey({}), refetchInterval: 8000 } }
   );
+
+  useEffect(() => {
+    if (!orders) return;
+    const pendingCount = orders.filter(o => o.status === "pending").length;
+    if (prevPendingCount.current !== null && pendingCount > prevPendingCount.current) {
+      playOrderAlert();
+      toast({ title: "🔔 ¡Nuevo pedido!", description: "Tienes un pedido pendiente" });
+    }
+    prevPendingCount.current = pendingCount;
+  }, [orders]);
 
   const updateStatus = useUpdateOrderStatus({
     mutation: {

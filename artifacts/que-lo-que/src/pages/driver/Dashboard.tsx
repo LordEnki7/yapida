@@ -1,17 +1,19 @@
 import { Link } from "wouter";
-import { useGetMyDriver, getGetMyDriverQueryKey, useUpdateDriverStatus, useGetDriverStats, getGetDriverStatsQueryKey } from "@workspace/api-client-react";
+import { useGetMyDriver, getGetMyDriverQueryKey, useUpdateDriverStatus, useGetDriverStats, getGetDriverStatsQueryKey, useAcceptJob, useDeclineJob, getGetAvailableJobsQueryKey } from "@workspace/api-client-react";
 import { getStoredUser, formatDOP } from "@/lib/auth";
 import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import NotificationBell from "@/components/NotificationBell";
 import ImageUpload from "@/components/ImageUpload";
-import { useQueryClient } from "@tanstack/react-query";
+import JobAlertModal from "@/components/JobAlertModal";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Zap, Wallet, Package, TrendingUp, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef, useState } from "react";
 
 const CASH_LIMIT = 10000;
 const CASH_WARNING = 8000;
@@ -21,6 +23,8 @@ export default function DriverDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t } = useLang();
+  const [alertJob, setAlertJob] = useState<any | null>(null);
+  const seenJobIds = useRef<Set<number>>(new Set());
 
   const { data: driver, isLoading: driverLoading } = useGetMyDriver({
     query: { queryKey: getGetMyDriverQueryKey() }
@@ -47,6 +51,49 @@ export default function DriverDashboard() {
     updateStatus.mutate({ isOnline: !driver.isOnline });
   };
 
+  const { data: availableJobs } = useQuery({
+    queryKey: getGetAvailableJobsQueryKey(),
+    queryFn: async () => {
+      const res = await fetch("/api/driver/available-jobs", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    refetchInterval: driver?.isOnline ? 8000 : false,
+    enabled: !!driver?.isOnline,
+  });
+
+  const acceptJob = useAcceptJob({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetAvailableJobsQueryKey() });
+        setAlertJob(null);
+        toast({ title: "¡Pedido aceptado!", description: "Ve a recoger en el negocio 🛵" });
+      },
+      onError: (err: any) => {
+        const msg = err?.response?.data?.error ?? t.error;
+        toast({ title: "Error", description: msg, variant: "destructive" });
+        setAlertJob(null);
+      },
+    }
+  });
+
+  const declineJob = useDeclineJob({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetAvailableJobsQueryKey() });
+        setAlertJob(null);
+      },
+    }
+  });
+
+  useEffect(() => {
+    if (!availableJobs?.length || !driver?.isOnline) return;
+    const newJob = availableJobs.find((j: any) => !seenJobIds.current.has(j.id));
+    if (newJob && !alertJob) {
+      seenJobIds.current.add(newJob.id);
+      setAlertJob(newJob);
+    }
+  }, [availableJobs, driver?.isOnline]);
+
   const handlePhotoUploaded = async (objectPath: string) => {
     const res = await fetch("/api/drivers/me/photo", {
       method: "PATCH",
@@ -72,6 +119,15 @@ export default function DriverDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-white pb-8">
+      {alertJob && (
+        <JobAlertModal
+          job={alertJob}
+          onAccept={(id) => acceptJob.mutate({ orderId: id })}
+          onDecline={(id) => { declineJob.mutate({ orderId: id }); }}
+          accepting={acceptJob.isPending}
+          declining={declineJob.isPending}
+        />
+      )}
       <div className="bg-background border-b border-yellow-400/20 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

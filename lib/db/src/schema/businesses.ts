@@ -18,6 +18,7 @@ export const businessesTable = pgTable("businesses", {
   isOpen: boolean("is_open").notNull().default(true),
   rating: real("rating").notNull().default(5.0),
   totalOrders: integer("total_orders").notNull().default(0),
+  prepTimeMinutes: integer("prep_time_minutes").notNull().default(25),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
