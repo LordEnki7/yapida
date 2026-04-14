@@ -1,4 +1,4 @@
-FROM node:24-slim
+FROM node:24-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -16,14 +16,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 
 RUN pnpm --filter @workspace/api-server run build
 
-RUN pnpm --filter @workspace/api-server deploy --prod /deploy
-
-RUN cp -r /app/artifacts/api-server/dist /deploy/dist
+FROM node:24-slim AS runner
 
 ENV NODE_ENV=production
 ENV PORT=8080
 
-WORKDIR /deploy
+WORKDIR /app
+
+COPY --from=base /app/artifacts/api-server/dist ./dist
 
 EXPOSE 8080
 

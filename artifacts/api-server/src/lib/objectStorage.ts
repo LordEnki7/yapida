@@ -1,4 +1,3 @@
-import { Storage, File } from "@google-cloud/storage";
 import { Readable } from "stream";
 import { randomUUID } from "crypto";
 import {
@@ -11,23 +10,39 @@ import {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
+// Lazy-load @google-cloud/storage so the server can start even when the
+// package is not installed (e.g. non-Replit deployments like Dokploy).
+let _storageClient: import("@google-cloud/storage").Storage | null = null;
+
+async function getStorageClient(): Promise<import("@google-cloud/storage").Storage> {
+  if (_storageClient) return _storageClient;
+  try {
+    const { Storage } = await import("@google-cloud/storage");
+    _storageClient = new Storage({
+      credentials: {
+        audience: "replit",
+        subject_token_type: "access_token",
+        token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
+        type: "external_account",
+        credential_source: {
+          url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
+          format: {
+            type: "json",
+            subject_token_field_name: "access_token",
+          },
+        },
+        universe_domain: "googleapis.com",
       },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+      projectId: "",
+    });
+    return _storageClient;
+  } catch {
+    throw new Error(
+      "Object storage is not available in this environment. " +
+        "@google-cloud/storage package is required."
+    );
+  }
+}
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -70,24 +85,22 @@ export class ObjectStorageService {
     return dir;
   }
 
-  async searchPublicObject(filePath: string): Promise<File | null> {
+  async searchPublicObject(filePath: string): Promise<import("@google-cloud/storage").File | null> {
+    const client = await getStorageClient();
     for (const searchPath of this.getPublicObjectSearchPaths()) {
       const fullPath = `${searchPath}/${filePath}`;
-
       const { bucketName, objectName } = parseObjectPath(fullPath);
-      const bucket = objectStorageClient.bucket(bucketName);
+      const bucket = client.bucket(bucketName);
       const file = bucket.file(objectName);
-
       const [exists] = await file.exists();
       if (exists) {
         return file;
       }
     }
-
     return null;
   }
 
-  async downloadObject(file: File, cacheTtlSec: number = 3600): Promise<Response> {
+  async downloadObject(file: import("@google-cloud/storage").File, cacheTtlSec: number = 3600): Promise<Response> {
     const [metadata] = await file.getMetadata();
     const aclPolicy = await getObjectAclPolicy(file);
     const isPublic = aclPolicy?.visibility === "public";
@@ -117,7 +130,6 @@ export class ObjectStorageService {
 
     const objectId = randomUUID();
     const fullPath = `${privateObjectDir}/uploads/${objectId}`;
-
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
     return signObjectURL({
@@ -128,7 +140,7 @@ export class ObjectStorageService {
     });
   }
 
-  async getObjectEntityFile(objectPath: string): Promise<File> {
+  async getObjectEntityFile(objectPath: string): Promise<import("@google-cloud/storage").File> {
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();
     }
@@ -138,6 +150,7 @@ export class ObjectStorageService {
       throw new ObjectNotFoundError();
     }
 
+    const client = await getStorageClient();
     const entityId = parts.slice(1).join("/");
     let entityDir = this.getPrivateObjectDir();
     if (!entityDir.endsWith("/")) {
@@ -145,7 +158,7 @@ export class ObjectStorageService {
     }
     const objectEntityPath = `${entityDir}${entityId}`;
     const { bucketName, objectName } = parseObjectPath(objectEntityPath);
-    const bucket = objectStorageClient.bucket(bucketName);
+    const bucket = client.bucket(bucketName);
     const objectFile = bucket.file(objectName);
     const [exists] = await objectFile.exists();
     if (!exists) {
@@ -195,7 +208,7 @@ export class ObjectStorageService {
     requestedPermission,
   }: {
     userId?: string;
-    objectFile: File;
+    objectFile: import("@google-cloud/storage").File;
     requestedPermission?: ObjectPermission;
   }): Promise<boolean> {
     return canAccessObject({
