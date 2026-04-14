@@ -61,7 +61,7 @@ export default function Login() {
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <img src={logo} alt="Que Lo Que Logo" className="w-36 mx-auto object-contain mb-2" />
+            <img src={logo} alt="YaPide" className="w-36 mx-auto object-contain mb-2" />
             <h1 className="text-3xl font-black text-yellow-400 uppercase">{t.loginTitle}</h1>
             <p className="text-gray-400 mt-1">{t.tagline}</p>
           </div>

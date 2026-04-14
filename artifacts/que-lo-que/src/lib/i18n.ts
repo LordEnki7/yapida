@@ -4,7 +4,7 @@ export const translations = {
   es: {
     // General
     appName: "QUE LO QUE",
-    tagline: "¿Qué tú quieres?",
+    tagline: "Entrega rápida y económica",
     back: "Volver",
     loading: "Cargando...",
     save: "Guardar",
@@ -44,7 +44,7 @@ export const translations = {
     // Customer Home
     searchPlaceholder: "Busca lo que quieres...",
     allBusinesses: "Todos los negocios",
-    greeting: (name: string) => `¿Qué tú quieres, ${name}?`,
+    greeting: (name: string) => `¡Hola, ${name}!`,
     allCategory: "Todos",
     foodCategory: "Comida",
     supermarketCategory: "Supermercado",
@@ -252,7 +252,7 @@ export const translations = {
   en: {
     // General
     appName: "QUE LO QUE",
-    tagline: "What do you want?",
+    tagline: "Fast & affordable delivery",
     back: "Back",
     loading: "Loading...",
     save: "Save",
@@ -292,7 +292,7 @@ export const translations = {
     // Customer Home
     searchPlaceholder: "Search for anything...",
     allBusinesses: "All businesses",
-    greeting: (name: string) => `What do you want, ${name}?`,
+    greeting: (name: string) => `Hey, ${name}!`,
     allCategory: "All",
     foodCategory: "Food",
     supermarketCategory: "Supermarket",

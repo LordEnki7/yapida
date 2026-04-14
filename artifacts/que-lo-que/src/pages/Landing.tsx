@@ -28,7 +28,7 @@ export default function Landing() {
           <div className="flex justify-end">
             <LangToggle />
           </div>
-          <img src={logo} alt="Que Lo Que Logo" className="w-56 mx-auto object-contain drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]" />
+          <img src={logo} alt="YaPide" className="w-56 mx-auto object-contain drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]" />
           <p className="text-lg italic text-blue-200 mt-2">{t.tagline}</p>
         </div>
 

@@ -62,7 +62,7 @@ export default function DriverDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-widest">{t.driverTitle}</p>
-            <h1 className="text-2xl font-black text-yellow-400">Que Lo Que 🛵</h1>
+            <h1 className="text-2xl font-black text-yellow-400">YaPide 🛵</h1>
           </div>
           <div className="flex items-center gap-3">
             <NotificationBell />

@@ -1,5 +1,5 @@
 self.addEventListener("push", (event) => {
-  let data = { title: "Que Lo Que", body: "Tienes una notificación nueva" };
+  let data = { title: "YaPide", body: "Tienes una notificación nueva" };
   try {
     data = event.data?.json() ?? data;
   } catch (_) {}

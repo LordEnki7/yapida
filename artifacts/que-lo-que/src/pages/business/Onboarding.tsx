@@ -77,7 +77,7 @@ export default function BusinessOnboarding() {
     <div className="min-h-screen bg-background text-white flex flex-col">
       <div className="flex-1 overflow-y-auto px-6 py-8 max-w-md mx-auto w-full">
         <div className="text-center mb-8">
-          <img src={logo} alt="Que Lo Que" className="w-20 mx-auto object-contain mb-3" />
+          <img src={logo} alt="YaPide" className="w-20 mx-auto object-contain mb-3" />
           <div className="w-12 h-12 rounded-full bg-yellow-400/20 flex items-center justify-center mx-auto mb-3">
             <Store size={24} className="text-yellow-400" />
           </div>

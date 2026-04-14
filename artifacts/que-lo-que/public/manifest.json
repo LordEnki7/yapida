@@ -1,7 +1,7 @@
 {
-  "name": "Que Lo Que",
-  "short_name": "Que Lo Que",
-  "description": "Que lo que… ¿qué tú quieres? Dominican delivery app.",
+  "name": "YaPide",
+  "short_name": "YaPide",
+  "description": "YaPide — Entrega rápida y económica. Dominican delivery app.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#040f26",

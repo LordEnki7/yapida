@@ -72,7 +72,7 @@ export default function CustomerHome() {
                 <ChevronLeft size={16} />
               </button>
             )}
-            <img src="/logo.png" alt="Que Lo Que" className="h-9 w-auto object-contain" />
+            <img src="/logo.png" alt="YaPide" className="h-9 w-auto object-contain" />
             {!selectedCategory && (
               <p className="text-sm font-black text-yellow-400 leading-tight">
                 {t.greeting(user?.name?.split(" ")[0] || (lang === "es" ? "bicho" : "friend"))}

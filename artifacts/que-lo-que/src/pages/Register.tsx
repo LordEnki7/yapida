@@ -77,9 +77,9 @@ export default function Register() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
-            <img src={logo} alt="Que Lo Que" className="w-28 mx-auto object-contain mb-2" />
+            <img src={logo} alt="YaPide" className="w-28 mx-auto object-contain mb-2" />
             <h1 className="text-2xl font-black text-yellow-400 uppercase">Crear cuenta</h1>
-            <p className="text-gray-400 text-sm mt-1">Únete a Que Lo Que</p>
+            <p className="text-gray-400 text-sm mt-1">Únete a YaPide</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
