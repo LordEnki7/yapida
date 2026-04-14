@@ -20,6 +20,7 @@ function formatDriver(d: typeof driversTable.$inferSelect, user?: typeof usersTa
     cashBalance: d.cashBalance,
     walletBalance: d.walletBalance,
     totalDeliveries: d.totalDeliveries,
+    photoUrl: d.photoUrl,
     createdAt: d.createdAt,
     user: user ? {
       id: user.id,
@@ -81,6 +82,17 @@ router.patch("/drivers/me/location", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   await db.update(driversTable).set({ currentLat: parsed.data.lat, currentLng: parsed.data.lng }).where(eq(driversTable.userId, sessionUserId));
   res.json({ success: true });
+});
+
+router.patch("/drivers/me/photo", async (req, res): Promise<void> => {
+  const sessionUserId = (req.session as any)?.userId;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { photoUrl } = req.body;
+  if (typeof photoUrl !== "string" || !photoUrl) { res.status(400).json({ error: "photoUrl required" }); return; }
+  const [driver] = await db.update(driversTable).set({ photoUrl }).where(eq(driversTable.userId, sessionUserId)).returning();
+  if (!driver) { res.status(404).json({ error: "Driver not found" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  res.json(formatDriver(driver, user));
 });
 
 router.get("/drivers/me/wallet", async (req, res): Promise<void> => {

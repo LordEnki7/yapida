@@ -17,6 +17,7 @@ export const driversTable = pgTable("drivers", {
   cashBalance: real("cash_balance").notNull().default(0),
   walletBalance: real("wallet_balance").notNull().default(0),
   totalDeliveries: integer("total_deliveries").notNull().default(0),
+  photoUrl: text("photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

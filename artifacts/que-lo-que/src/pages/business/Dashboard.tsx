@@ -4,6 +4,7 @@ import { formatDOP, getStoredUser } from "@/lib/auth";
 import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import NotificationBell from "@/components/NotificationBell";
+import ImageUpload from "@/components/ImageUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,20 @@ export default function BusinessDashboard() {
     }
   });
 
+  const updateLogo = useUpdateBusiness({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyBusinessQueryKey() });
+        toast({ title: "¡Logo actualizado!" });
+      }
+    }
+  });
+
+  const handleLogoUploaded = (objectPath: string) => {
+    if (!business) return;
+    updateLogo.mutate({ businessId: business.id, data: { imageUrl: `/api/storage/objects/${objectPath}` } });
+  };
+
   if (bizLoading) return (
     <div className="min-h-screen bg-background p-4 space-y-4">
       <Skeleton className="h-32 bg-white/8 rounded-2xl" />
@@ -51,15 +66,33 @@ export default function BusinessDashboard() {
             <NotificationBell />
             <LangToggle />
           </div>
+          <div className="absolute bottom-3 right-3">
+            <ImageUpload
+              currentUrl={undefined}
+              onUploaded={handleLogoUploaded}
+              shape="square"
+              label=""
+              size="sm"
+            />
+          </div>
         </div>
       )}
 
       <div className={`px-4 py-4 ${business?.imageUrl ? "-mt-6 relative" : ""}`}>
         {!business?.imageUrl && (
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-widest">{t.businessPanel}</p>
-              <h1 className="text-xl font-black text-yellow-400">{business?.name}</h1>
+            <div className="flex items-center gap-3">
+              <ImageUpload
+                currentUrl={undefined}
+                onUploaded={handleLogoUploaded}
+                shape="square"
+                label="Logo"
+                size="sm"
+              />
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-widest">{t.businessPanel}</p>
+                <h1 className="text-xl font-black text-yellow-400">{business?.name}</h1>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />

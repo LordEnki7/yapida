@@ -4,6 +4,7 @@ import { getStoredUser, formatDOP } from "@/lib/auth";
 import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import NotificationBell from "@/components/NotificationBell";
+import ImageUpload from "@/components/ImageUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,19 @@ export default function DriverDashboard() {
     updateStatus.mutate({ isOnline: !driver.isOnline });
   };
 
+  const handlePhotoUploaded = async (objectPath: string) => {
+    const res = await fetch("/api/drivers/me/photo", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photoUrl: objectPath }),
+    });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: getGetMyDriverQueryKey() });
+      toast({ title: "¡Foto actualizada!" });
+    }
+  };
+
   if (driverLoading) return (
     <div className="min-h-screen bg-background p-4 space-y-4">
       <Skeleton className="h-32 bg-white/8 rounded-2xl" />
@@ -60,15 +74,23 @@ export default function DriverDashboard() {
     <div className="min-h-screen bg-background text-white pb-8">
       <div className="bg-background border-b border-yellow-400/20 px-4 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-widest">{t.driverTitle}</p>
-            <h1 className="text-2xl font-black text-yellow-400">YaPide 🛵</h1>
-          </div>
           <div className="flex items-center gap-3">
+            <ImageUpload
+              currentUrl={driver?.photoUrl ? `/api/storage/objects/${driver.photoUrl}` : undefined}
+              onUploaded={handlePhotoUploaded}
+              shape="circle"
+              label=""
+              size="sm"
+            />
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-widest">{t.driverTitle}</p>
+              <h1 className="text-lg font-black text-yellow-400">{user?.name ?? "YaPide 🛵"}</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <NotificationBell />
             <LangToggle />
             <div className="text-right">
-              <p className="text-xs text-gray-400">{user?.name}</p>
               <div className="flex items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${driver?.isOnline ? "bg-green-400 animate-pulse" : "bg-gray-500"}`} />
                 <span className="text-xs font-bold">{driver?.isOnline ? t.online : t.offline}</span>

@@ -1,12 +1,13 @@
-# Que Lo Que — Dominican Delivery App
+# YaPide — Dominican Delivery App
 
 ## Overview
 
-"Que Lo Que" — a Dominican delivery app (like Uber Eats for the DR) with bold street energy.
-Brand: deep royal blue background (`228 83% 9%`), electric yellow (#FFD700), white text.
-Tagline: "Que lo que… ¿qué tú quieres?"
+"YaPide" — a Dominican delivery app (like Uber Eats for the DR) with bold street energy.
+Brand: deep royal navy blue (`228 83% 9%`), electric yellow (#FFD700), white text.
+Tagline: "Entrega rápida y económica."
 Four distinct user modes: customer, driver, business, admin.
 Logo: motorcycle with lightning bolt (`/public/logo.png`, transparent PNG).
+Bilingual ES/EN with Spanish as default.
 
 pnpm workspace monorepo using TypeScript.
 
