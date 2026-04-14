@@ -140,8 +140,11 @@
 }
 
 /* Phone frame — makes the app look like a mobile device in the browser preview */
-html, body {
+html {
   background: #01060f;
+}
+
+body {
   min-height: 100dvh;
   display: flex;
   justify-content: center;
@@ -153,18 +156,28 @@ html, body {
   max-width: 430px;
   min-height: 100dvh;
   background: hsl(228 83% 9%);
-  box-shadow: 0 0 0 1px hsl(226 60% 18%), 0 8px 80px rgba(0,0,0,0.8), inset 0 0 0 1px hsl(226 60% 22%);
-  border-radius: 0;
   position: relative;
   overflow-x: hidden;
 }
 
 @media (min-width: 500px) {
+  body {
+    padding: 14px 0;
+    background: #01060f;
+  }
+
   #root {
     border-radius: 40px;
-    margin: 12px auto;
-    min-height: calc(100dvh - 24px);
-    max-height: calc(100dvh - 24px);
+    min-height: calc(100dvh - 28px);
+    max-height: calc(100dvh - 28px);
     overflow-y: auto;
+    overflow-x: hidden;
+    /* transform creates a new containing block so position:fixed children
+       stay inside the phone frame instead of escaping to the viewport */
+    transform: translateZ(0);
+    box-shadow:
+      0 0 0 1px hsl(226 60% 20%),
+      0 0 0 3px hsl(226 60% 12%),
+      0 20px 100px rgba(0,0,0,0.9);
   }
 }

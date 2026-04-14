@@ -14,37 +14,25 @@ const CATEGORIES = [
     key: "food",
     label: "Restaurantes",
     labelEn: "Restaurants",
-    emoji: "🍔",
-    gradient: "from-orange-900/90 via-orange-800/70 to-transparent",
-    bg: "bg-orange-950",
-    accent: "#f97316",
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80",
   },
   {
     key: "supermarket",
     label: "Supermercado",
     labelEn: "Supermarket",
-    emoji: "🛒",
-    gradient: "from-green-900/90 via-green-800/70 to-transparent",
-    bg: "bg-green-950",
-    accent: "#22c55e",
+    photo: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=700&q=80",
   },
   {
     key: "pharmacy",
     label: "Farmacia",
     labelEn: "Pharmacy",
-    emoji: "💊",
-    gradient: "from-blue-900/90 via-blue-800/70 to-transparent",
-    bg: "bg-blue-950",
-    accent: "#3b82f6",
+    photo: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=700&q=80",
   },
   {
     key: "liquor",
     label: "Licorería",
     labelEn: "Liquor Store",
-    emoji: "🍾",
-    gradient: "from-purple-900/90 via-purple-800/70 to-transparent",
-    bg: "bg-purple-950",
-    accent: "#a855f7",
+    photo: "https://images.unsplash.com/photo-1569529465841-dfecdab7503b?w=700&q=80",
   },
 ];
 
@@ -150,22 +138,27 @@ export default function CustomerHome() {
 
         {/* ─── CATEGORY TILES ─── */}
         {!selectedCategory && !search && (
-          <div className="px-4 pt-4 space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">¿Qué tú quieres?</p>
+          <div className="pt-3 space-y-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.key}
                 onClick={() => setSelectedCategory(cat.key)}
-                className={`w-full relative h-28 rounded-2xl overflow-hidden flex items-center justify-between px-6 active:scale-[0.98] transition-transform ${cat.bg}`}
+                className="w-full relative h-48 overflow-hidden active:opacity-90 transition-opacity"
               >
-                <div className={`absolute inset-0 bg-gradient-to-r ${cat.gradient}`} />
-                <div className="relative z-10 text-left">
-                  <p className="text-2xl font-black text-white drop-shadow-lg">
+                {/* Photo background */}
+                <img
+                  src={cat.photo}
+                  alt={lang === "es" ? cat.label : cat.labelEn}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {/* Dark gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
+                {/* Text bottom-left */}
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <p className="text-3xl font-black text-white drop-shadow-lg leading-tight">
                     {lang === "es" ? cat.label : cat.labelEn}
                   </p>
-                  <p className="text-xs mt-1 font-bold" style={{ color: cat.accent }}>Ver negocios →</p>
                 </div>
-                <span className="relative z-10 text-6xl drop-shadow-2xl">{cat.emoji}</span>
               </button>
             ))}
           </div>
