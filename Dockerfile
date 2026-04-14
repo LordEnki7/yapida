@@ -24,6 +24,7 @@ ENV PORT=8080
 WORKDIR /app
 
 COPY --from=base /app/artifacts/api-server/dist ./dist
+COPY --from=base /app/node_modules ./node_modules
 
 EXPOSE 8080
 
