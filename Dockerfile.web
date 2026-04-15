@@ -10,6 +10,9 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY package.json ./
 COPY tsconfig.base.json ./
 
+# Increment CACHEBUST in Dokploy build args to force a full rebuild
+ARG CACHEBUST=1
+
 COPY lib/ ./lib/
 COPY artifacts/que-lo-que/ ./artifacts/que-lo-que/
 
