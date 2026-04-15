@@ -8,13 +8,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Trash2, MapPin, Banknote, Plus, Star, ChevronDown, ChevronUp, Check, Navigation, Loader2, FileText, Tag, X, CreditCard, Lock } from "lucide-react";
+import {
+  ArrowLeft, Trash2, MapPin, Banknote, Plus, ChevronDown, ChevronUp,
+  Check, Navigation, Loader2, FileText, Tag, X, CreditCard, Lock,
+  ChevronRight, Minus,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { requestGPS } from "@/lib/gps";
 
 const MARKUP = 0.15;
 const DELIVERY_FEE = 150;
-const TIP_PRESETS = [0, 50, 100, 200];
 
 interface SavedAddress {
   id: number;
@@ -23,24 +26,34 @@ interface SavedAddress {
   isDefault: boolean;
 }
 
+type Step = 1 | 2 | 3 | 4;
+
+const STEPS = [
+  { n: 1, label: "Carrito" },
+  { n: 2, label: "Notas" },
+  { n: 3, label: "Dirección" },
+  { n: 4, label: "Pago" },
+];
+
 export default function CustomerCart() {
   const { items, removeItem, updateQuantity, clearCart, totalAmount, businessId } = useCart();
+  const [step, setStep] = useState<Step>(1);
+  const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
   const [addressLabel, setAddressLabel] = useState("Casa");
-  const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
   const [tip, setTip] = useState(0);
   const [customTip, setCustomTip] = useState("");
   const [showCustomTip, setShowCustomTip] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
-  const [saveAddress, setSaveAddress] = useState(false);
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t } = useLang();
+  const user = getStoredUser();
 
   const [promoInput, setPromoInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number; discountType: string; discountValue: number } | null>(null);
@@ -50,9 +63,7 @@ export default function CustomerCart() {
   const markedUpTotal = parseFloat((totalAmount * (1 + MARKUP)).toFixed(2));
   const activeTip = showCustomTip && customTip ? parseFloat(customTip) || 0 : tip;
   const promoDiscount = appliedPromo?.discountAmount ?? 0;
-  const grandTotal = markedUpTotal + DELIVERY_FEE + activeTip - promoDiscount;
-
-  const user = getStoredUser();
+  const grandTotal = Math.max(markedUpTotal + DELIVERY_FEE + activeTip - promoDiscount, 0);
 
   useEffect(() => {
     if (!user) return;
@@ -83,7 +94,7 @@ export default function CustomerCart() {
       const saved = await res.json();
       setSavedAddresses(prev => [...prev, saved]);
       setShowSaveForm(false);
-      toast({ title: "✅ Dirección guardada", description: `"${addressLabel}" guardada para próximas veces` });
+      toast({ title: "✅ Dirección guardada" });
     }
   };
 
@@ -146,7 +157,6 @@ export default function CustomerCart() {
       return;
     }
     if (!businessId) return;
-
     (createOrder.mutate as any)({
       businessId,
       paymentMethod,
@@ -173,312 +183,436 @@ export default function CustomerCart() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-white pb-32">
+    <div className="min-h-screen bg-background text-white flex flex-col">
+      {/* Header */}
       <div className="bg-background border-b border-yellow-400/20 px-4 py-4 flex items-center gap-3 sticky top-0 z-10">
-        <Link href="/customer">
-          <button className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/10 transition">
+        {step === 1 ? (
+          <Link href="/customer">
+            <button className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/10 transition">
+              <ArrowLeft size={18} />
+            </button>
+          </Link>
+        ) : (
+          <button
+            onClick={() => setStep((step - 1) as Step)}
+            className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/10 transition"
+          >
             <ArrowLeft size={18} />
           </button>
-        </Link>
-        <h1 className="text-xl font-black text-yellow-400">{t.yourOrder}</h1>
+        )}
+        <div className="flex-1">
+          <h1 className="text-base font-black text-yellow-400">
+            {step === 1 && t.yourOrder}
+            {step === 2 && "Notas al negocio"}
+            {step === 3 && t.deliveryAddress}
+            {step === 4 && t.paymentMethod}
+          </h1>
+        </div>
+        {/* Running total badge */}
+        <div className="bg-yellow-400/15 border border-yellow-400/30 rounded-xl px-3 py-1">
+          <span className="text-yellow-400 font-black text-sm">{formatDOP(grandTotal)}</span>
+        </div>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
-        {/* Items */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl overflow-hidden">
-          {items.map((item, idx) => {
-            const customerPrice = parseFloat((item.product.price * (1 + MARKUP)).toFixed(2));
-            return (
-              <div key={item.productId} className={`flex items-center gap-3 p-4 ${idx < items.length - 1 ? "border-b border-white/5" : ""}`}>
-                {item.product.imageUrl && (
-                  <img src={item.product.imageUrl} alt={item.product.name} className="w-14 h-14 object-cover rounded-lg flex-shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm">{item.product.name}</p>
-                  <p className="text-yellow-400 font-bold text-sm">{formatDOP(customerPrice)} × {item.quantity}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => updateQuantity(item.productId!, item.quantity - 1)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-white/20">-</button>
-                  <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.productId!, item.quantity + 1)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-white/20">+</button>
-                  <button onClick={() => removeItem(item.productId!)} className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center hover:bg-red-500/40 transition ml-1">
-                    <Trash2 size={12} className="text-red-400" />
-                  </button>
-                </div>
+      {/* Step progress dots */}
+      <div className="flex items-center justify-center gap-2 px-4 py-3 border-b border-white/5">
+        {STEPS.map((s, idx) => (
+          <div key={s.n} className="flex items-center gap-2">
+            <div className={`flex items-center gap-1.5 transition-all ${step === s.n ? "opacity-100" : step > s.n ? "opacity-60" : "opacity-30"}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black border transition-all ${
+                step > s.n
+                  ? "bg-yellow-400 border-yellow-400 text-black"
+                  : step === s.n
+                  ? "border-yellow-400 text-yellow-400"
+                  : "border-white/20 text-gray-500"
+              }`}>
+                {step > s.n ? <Check size={12} /> : s.n}
               </div>
-            );
-          })}
-        </div>
-
-        {/* Delivery Address */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <MapPin size={16} className="text-yellow-400" />
-            <h3 className="font-bold">{t.deliveryAddress}</h3>
+              <span className={`text-xs font-bold hidden sm:block ${step === s.n ? "text-yellow-400" : "text-gray-500"}`}>
+                {s.label}
+              </span>
+            </div>
+            {idx < STEPS.length - 1 && (
+              <div className={`w-6 h-px transition-all ${step > s.n ? "bg-yellow-400/60" : "bg-white/10"}`} />
+            )}
           </div>
+        ))}
+      </div>
 
-          {savedAddresses.length > 0 && (
-            <div className="mb-3">
-              <button
-                onClick={() => setShowAddressDropdown(!showAddressDropdown)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-sm font-bold text-yellow-400"
-              >
-                <span>📍 Mis direcciones guardadas</span>
-                {showAddressDropdown ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      {/* Step content */}
+      <div className="flex-1 overflow-y-auto pb-32">
+
+        {/* ── STEP 1: Cart Items ── */}
+        {step === 1 && (
+          <div className="px-4 py-4 space-y-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+              {items.map((item, idx) => {
+                const customerPrice = parseFloat((item.product.price * (1 + MARKUP)).toFixed(2));
+                const lineTotal = parseFloat((customerPrice * item.quantity).toFixed(2));
+                return (
+                  <div key={item.productId} className={`flex items-center gap-3 p-4 ${idx < items.length - 1 ? "border-b border-white/5" : ""}`}>
+                    {item.product.imageUrl && (
+                      <img src={item.product.imageUrl} alt={item.product.name} className="w-14 h-14 object-cover rounded-xl flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm leading-tight">{item.product.name}</p>
+                      <p className="text-gray-400 text-xs mt-0.5">{formatDOP(customerPrice)} c/u</p>
+                      <p className="text-yellow-400 font-black text-sm mt-0.5">{formatDOP(lineTotal)}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => updateQuantity(item.productId!, item.quantity - 1)}
+                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="text-sm font-black w-5 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.productId!, item.quantity + 1)}
+                        className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center hover:bg-yellow-400/30 transition"
+                      >
+                        <Plus size={14} className="text-yellow-400" />
+                      </button>
+                      <button
+                        onClick={() => removeItem(item.productId!)}
+                        className="w-8 h-8 rounded-full bg-red-500/15 flex items-center justify-center hover:bg-red-500/30 transition ml-0.5"
+                      >
+                        <Trash2 size={13} className="text-red-400" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Order summary */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2">
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{items.length} {items.length === 1 ? "artículo" : "artículos"}</span>
+                <span>{formatDOP(markedUpTotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{t.delivery}</span>
+                <span>{formatDOP(DELIVERY_FEE)}</span>
+              </div>
+              <div className="border-t border-white/10 pt-2 flex justify-between font-black text-lg">
+                <span>{t.total}</span>
+                <span className="text-yellow-400">{formatDOP(grandTotal)}</span>
+              </div>
+            </div>
+
+            {/* Add more items link */}
+            <Link href={businessId ? `/customer/business/${businessId}` : "/customer"}>
+              <button className="w-full flex items-center justify-center gap-2 text-sm text-yellow-400/70 hover:text-yellow-400 transition py-2">
+                <Plus size={14} />
+                Agregar más artículos
               </button>
-              {showAddressDropdown && (
-                <div className="mt-2 space-y-2">
-                  {savedAddresses.map(a => (
-                    <button
-                      key={a.id}
-                      onClick={() => handleSelectAddress(a)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left text-sm transition ${address === a.address ? "border-yellow-400 bg-yellow-400/10" : "border-white/10 bg-white/8 hover:bg-white/10"}`}
-                    >
-                      {address === a.address && <Check size={14} className="text-yellow-400 flex-shrink-0" />}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-white">{a.label}</p>
-                        <p className="text-gray-400 text-xs truncate">{a.address}</p>
-                      </div>
-                      {a.isDefault && <span className="text-xs text-yellow-400/60 font-bold">Principal</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Input
-              placeholder={t.addressPlaceholder}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 flex-1"
-              data-testid="input-address"
-            />
-            <button
-              type="button"
-              onClick={handleGPS}
-              disabled={gpsLoading}
-              title="Usar mi ubicación"
-              className="px-3 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/20 transition disabled:opacity-50 flex items-center"
-            >
-              {gpsLoading ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
-            </button>
+            </Link>
           </div>
+        )}
 
-          {user && !showSaveForm && (
-            <button
-              onClick={() => setShowSaveForm(true)}
-              className="mt-2 flex items-center gap-1 text-xs text-yellow-400/70 hover:text-yellow-400 transition"
-            >
-              <Plus size={12} /> Guardar esta dirección para próximas veces
-            </button>
-          )}
-
-          {showSaveForm && (
-            <div className="mt-3 p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 space-y-2">
-              <p className="text-xs font-bold text-yellow-400">Etiquetar dirección</p>
-              <div className="flex gap-2">
-                {["Casa", "Trabajo", "Otro"].map(l => (
-                  <button
-                    key={l}
-                    onClick={() => setAddressLabel(l)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold border transition ${addressLabel === l ? "border-yellow-400 bg-yellow-400/20 text-yellow-400" : "border-white/10 bg-white/8 text-gray-400"}`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-              {addressLabel === "Otro" && (
-                <Input
-                  placeholder="Nombre de la dirección"
-                  value={addressLabel === "Otro" ? "" : addressLabel}
-                  onChange={(e) => setAddressLabel(e.target.value)}
-                  className="bg-white/8 border-white/10 text-white text-xs h-8"
-                />
-              )}
-              <div className="flex gap-2">
-                <Button onClick={handleSaveNewAddress} size="sm" className="bg-yellow-400 text-black font-bold text-xs h-7">
-                  Guardar
-                </Button>
-                <Button onClick={() => setShowSaveForm(false)} variant="ghost" size="sm" className="text-gray-400 text-xs h-7">
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <FileText size={13} className="text-yellow-400/70" />
-              <span className="text-xs font-bold text-yellow-400/70 uppercase tracking-wider">Notas para el negocio</span>
+        {/* ── STEP 2: Notes ── */}
+        {step === 2 && (
+          <div className="px-4 py-6 space-y-4">
+            <div className="text-center mb-2">
+              <p className="text-3xl mb-2">📝</p>
+              <h2 className="text-xl font-black">¿Alguna instrucción?</h2>
+              <p className="text-sm text-gray-400 mt-1">Sin cebolla, extra salsa, etc. — esto va directo al negocio</p>
             </div>
             <Textarea
               placeholder={t.specialInstructions}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 resize-none"
-              rows={2}
+              className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 resize-none text-base"
+              rows={5}
+              autoFocus
             />
+            <p className="text-xs text-gray-500 text-center">Opcional — puedes continuar sin notas</p>
           </div>
-        </div>
+        )}
 
-        {/* Order Summary */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl p-4 space-y-2">
-          <div className="flex justify-between text-sm text-gray-300">
-            <span>{items.length} {items.length === 1 ? "artículo" : "artículos"}</span>
-            <span>{formatDOP(markedUpTotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm text-gray-300">
-            <span>{t.delivery}</span>
-            <span>{formatDOP(DELIVERY_FEE)}</span>
-          </div>
-          {promoDiscount > 0 && (
-            <div className="flex justify-between text-sm text-green-400 font-bold">
-              <span>🎟 {appliedPromo?.code}</span>
-              <span>-{formatDOP(promoDiscount)}</span>
+        {/* ── STEP 3: Address ── */}
+        {step === 3 && (
+          <div className="px-4 py-6 space-y-4">
+            <div className="text-center mb-2">
+              <p className="text-3xl mb-2">📍</p>
+              <h2 className="text-xl font-black">¿A dónde te lo llevamos?</h2>
             </div>
-          )}
-          {activeTip > 0 && (
-            <div className="flex justify-between text-sm text-yellow-400/80">
-              <span>Propina al driver</span>
-              <span>{formatDOP(activeTip)}</span>
-            </div>
-          )}
-          <div className="border-t border-white/10 pt-2 flex justify-between font-black text-lg">
-            <span>{t.total}</span>
-            <span className="text-yellow-400">{formatDOP(Math.max(grandTotal, 0))}</span>
-          </div>
-        </div>
 
-        {/* Promo Code */}
-        <div className="bg-white/8 border border-white/10 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Tag size={16} className="text-yellow-400" />
-            <h3 className="font-bold">¿Tienes un código?</h3>
-          </div>
-          {appliedPromo ? (
-            <div className="flex items-center justify-between bg-green-400/10 border border-green-400/30 rounded-xl px-3 py-2">
+            {savedAddresses.length > 0 && (
               <div>
-                <p className="text-green-400 font-bold text-sm">✅ {appliedPromo.code}</p>
-                <p className="text-xs text-green-400/70">Descuento: {formatDOP(appliedPromo.discountAmount)}</p>
+                <button
+                  onClick={() => setShowAddressDropdown(!showAddressDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-sm font-bold text-yellow-400"
+                >
+                  <span>📍 Mis direcciones guardadas</span>
+                  {showAddressDropdown ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+                {showAddressDropdown && (
+                  <div className="mt-2 space-y-2">
+                    {savedAddresses.map(a => (
+                      <button
+                        key={a.id}
+                        onClick={() => handleSelectAddress(a)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left text-sm transition ${address === a.address ? "border-yellow-400 bg-yellow-400/10" : "border-white/10 bg-white/5 hover:bg-white/8"}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-white">{a.label}</p>
+                          <p className="text-gray-400 text-xs truncate">{a.address}</p>
+                        </div>
+                        {address === a.address && <Check size={16} className="text-yellow-400 flex-shrink-0" />}
+                        {a.isDefault && <span className="text-xs text-yellow-400/60 font-bold">Principal</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <button onClick={() => setAppliedPromo(null)} className="text-gray-400 hover:text-white transition">
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
+            )}
+
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
-                  placeholder="CODIGO"
-                  value={promoInput}
-                  onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-                  onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
-                  className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 uppercase font-bold tracking-widest"
+                  placeholder={t.addressPlaceholder}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 flex-1 text-base"
+                  data-testid="input-address"
+                  autoFocus={savedAddresses.length === 0}
                 />
-                <Button
-                  onClick={handleApplyPromo}
-                  disabled={promoLoading || !promoInput.trim()}
-                  className="bg-yellow-400 text-black font-bold hover:bg-yellow-300 flex-shrink-0"
+                <button
+                  type="button"
+                  onClick={handleGPS}
+                  disabled={gpsLoading}
+                  title="Usar mi ubicación"
+                  className="px-4 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/20 transition disabled:opacity-50 flex items-center"
                 >
-                  {promoLoading ? <Loader2 size={14} className="animate-spin" /> : "Aplicar"}
-                </Button>
+                  {gpsLoading ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+                </button>
               </div>
-              {promoError && <p className="text-xs text-red-400 font-bold">{promoError}</p>}
-            </div>
-          )}
-        </div>
 
-        {/* Tip — prominent step */}
-        <div className="rounded-2xl p-5 border border-yellow-400/30 bg-yellow-400/5">
-          <p className="text-center font-black text-white text-base mb-1">
-            ¿Quieres dejarle propina a tu driver?
-          </p>
-          <p className="text-center text-xs text-gray-400 mb-4">Opcional · 100% va al repartidor</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {[0, 50, 100, 200].map(p => (
-              <button
-                key={p}
-                onClick={() => { setTip(p); setShowCustomTip(false); setCustomTip(""); }}
-                className={`px-4 py-2 rounded-full text-sm font-black border transition ${!showCustomTip && tip === p ? "bg-yellow-400 text-black border-yellow-400 shadow-[0_0_14px_rgba(255,215,0,0.4)]" : "border-white/20 bg-white/8 text-gray-300 hover:border-yellow-400/40"}`}
-              >
-                {p === 0 ? "Ahora no" : formatDOP(p)}
-              </button>
-            ))}
-            <button
-              onClick={() => { setShowCustomTip(!showCustomTip); setTip(0); }}
-              className={`px-4 py-2 rounded-full text-sm font-black border transition ${showCustomTip ? "bg-yellow-400 text-black border-yellow-400" : "border-white/20 bg-white/8 text-gray-300 hover:border-yellow-400/40"}`}
-            >
-              Otra cantidad
-            </button>
+              {user && !showSaveForm && address.trim() && (
+                <button
+                  onClick={() => setShowSaveForm(true)}
+                  className="flex items-center gap-1.5 text-xs text-yellow-400/70 hover:text-yellow-400 transition mt-1"
+                >
+                  <Plus size={12} /> Guardar para próximas veces
+                </button>
+              )}
+
+              {showSaveForm && (
+                <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 space-y-2">
+                  <p className="text-xs font-bold text-yellow-400">Etiquetar dirección</p>
+                  <div className="flex gap-2">
+                    {["Casa", "Trabajo", "Otro"].map(l => (
+                      <button
+                        key={l}
+                        onClick={() => setAddressLabel(l)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border transition ${addressLabel === l ? "border-yellow-400 bg-yellow-400/20 text-yellow-400" : "border-white/10 bg-white/8 text-gray-400"}`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveNewAddress} size="sm" className="bg-yellow-400 text-black font-bold text-xs h-8">Guardar</Button>
+                    <Button onClick={() => setShowSaveForm(false)} variant="ghost" size="sm" className="text-gray-400 text-xs h-8">Cancelar</Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          {showCustomTip && (
-            <div className="mt-3 flex items-center gap-2 max-w-xs mx-auto">
-              <span className="text-gray-400 text-sm font-bold">RD$</span>
-              <Input
-                type="number"
-                placeholder="0"
-                value={customTip}
-                onChange={(e) => setCustomTip(e.target.value)}
-                className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 h-9 text-center font-black"
-              />
+        )}
+
+        {/* ── STEP 4: Payment ── */}
+        {step === 4 && (
+          <div className="px-4 py-4 space-y-4">
+
+            {/* Payment tiles */}
+            <div>
+              <p className="font-black text-xs text-gray-500 uppercase tracking-widest mb-3">{t.paymentMethod}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setPaymentMethod("cash")}
+                  className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 transition font-black ${paymentMethod === "cash" ? "border-yellow-400 bg-yellow-400/10 shadow-[0_0_20px_rgba(255,215,0,0.15)]" : "border-white/15 bg-white/5 hover:border-white/30"}`}
+                >
+                  <Banknote size={30} className={paymentMethod === "cash" ? "text-yellow-400" : "text-gray-400"} />
+                  <span className={`text-sm font-black ${paymentMethod === "cash" ? "text-yellow-400" : "text-gray-300"}`}>Efectivo</span>
+                  {paymentMethod === "cash" && <Check size={14} className="text-yellow-400" />}
+                </button>
+                <button
+                  onClick={() => setPaymentMethod("card")}
+                  className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 transition font-black relative overflow-hidden ${paymentMethod === "card" ? "border-blue-400/40 bg-blue-400/8" : "border-white/15 bg-white/5"}`}
+                >
+                  <CreditCard size={30} className="text-gray-500" />
+                  <span className="text-sm font-black text-gray-500">Tarjeta</span>
+                  <div className="absolute top-2 right-2 bg-gray-700/80 rounded-full px-1.5 py-0.5 flex items-center gap-0.5">
+                    <Lock size={9} className="text-gray-400" />
+                    <span className="text-[9px] text-gray-400 font-bold">Próximo</span>
+                  </div>
+                </button>
+              </div>
+              {paymentMethod === "card" && (
+                <div className="mt-2 flex items-start gap-2 bg-blue-400/8 border border-blue-400/20 rounded-xl px-3 py-2.5">
+                  <Lock size={14} className="text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-gray-400">El pago con tarjeta estará disponible muy pronto. Elige efectivo para completar tu pedido.</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Payment — two big tiles */}
-        <div>
-          <p className="font-black text-sm text-gray-400 uppercase tracking-widest mb-3">{t.paymentMethod}</p>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Cash */}
-            <button
-              onClick={() => setPaymentMethod("cash")}
-              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition font-black ${paymentMethod === "cash" ? "border-yellow-400 bg-yellow-400/10 shadow-[0_0_20px_rgba(255,215,0,0.2)]" : "border-white/15 bg-white/5 hover:border-white/30"}`}
-            >
-              <Banknote size={28} className={paymentMethod === "cash" ? "text-yellow-400" : "text-gray-400"} />
-              <div>
-                <p className={`text-base font-black ${paymentMethod === "cash" ? "text-yellow-400" : "text-gray-300"}`}>
-                  {formatDOP(Math.max(grandTotal, 0))}
-                </p>
-                <p className={`text-xs mt-0.5 ${paymentMethod === "cash" ? "text-yellow-400/70" : "text-gray-500"}`}>Efectivo</p>
+            {/* Tip */}
+            <div className="rounded-2xl p-4 border border-yellow-400/20 bg-yellow-400/5">
+              <p className="font-black text-white text-sm mb-1 text-center">¿Propina al driver?</p>
+              <p className="text-xs text-gray-500 text-center mb-3">Opcional · 100% va al repartidor</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[0, 50, 100, 200].map(p => (
+                  <button
+                    key={p}
+                    onClick={() => { setTip(p); setShowCustomTip(false); setCustomTip(""); }}
+                    className={`px-4 py-2 rounded-full text-sm font-black border transition ${!showCustomTip && tip === p ? "bg-yellow-400 text-black border-yellow-400" : "border-white/20 bg-white/5 text-gray-300 hover:border-yellow-400/40"}`}
+                  >
+                    {p === 0 ? "No, gracias" : formatDOP(p)}
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setShowCustomTip(!showCustomTip); setTip(0); }}
+                  className={`px-4 py-2 rounded-full text-sm font-black border transition ${showCustomTip ? "bg-yellow-400 text-black border-yellow-400" : "border-white/20 bg-white/5 text-gray-300 hover:border-yellow-400/40"}`}
+                >
+                  Otra cantidad
+                </button>
               </div>
-            </button>
+              {showCustomTip && (
+                <div className="mt-3 flex items-center gap-2 max-w-xs mx-auto">
+                  <span className="text-gray-400 text-sm font-bold">RD$</span>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={customTip}
+                    onChange={(e) => setCustomTip(e.target.value)}
+                    className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 h-9 text-center font-black"
+                  />
+                </div>
+              )}
+            </div>
 
-            {/* Card — coming soon */}
-            <button
-              onClick={() => setPaymentMethod("card")}
-              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition font-black relative overflow-hidden ${paymentMethod === "card" ? "border-blue-400/50 bg-blue-400/10" : "border-white/15 bg-white/5 hover:border-white/30"}`}
-            >
-              <CreditCard size={28} className="text-gray-500" />
-              <div>
-                <p className="text-base font-black text-gray-500">{formatDOP(Math.max(grandTotal, 0))}</p>
-                <p className="text-xs mt-0.5 text-gray-600">Tarjeta</p>
+            {/* Promo code */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Tag size={15} className="text-yellow-400" />
+                <h3 className="font-bold text-sm">¿Tienes un código?</h3>
               </div>
-              <div className="absolute top-2 right-2 bg-gray-700/80 rounded-full px-1.5 py-0.5">
-                <Lock size={9} className="text-gray-400 inline" />
-                <span className="text-[9px] text-gray-400 font-bold ml-0.5">Próximo</span>
+              {appliedPromo ? (
+                <div className="flex items-center justify-between bg-green-400/10 border border-green-400/30 rounded-xl px-3 py-2">
+                  <div>
+                    <p className="text-green-400 font-bold text-sm">✅ {appliedPromo.code}</p>
+                    <p className="text-xs text-green-400/70">Descuento: {formatDOP(appliedPromo.discountAmount)}</p>
+                  </div>
+                  <button onClick={() => setAppliedPromo(null)} className="text-gray-400 hover:text-white transition">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="CODIGO"
+                      value={promoInput}
+                      onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                      onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
+                      className="bg-white/8 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400 uppercase font-bold tracking-widest"
+                    />
+                    <Button
+                      onClick={handleApplyPromo}
+                      disabled={promoLoading || !promoInput.trim()}
+                      className="bg-yellow-400 text-black font-bold hover:bg-yellow-300 flex-shrink-0"
+                    >
+                      {promoLoading ? <Loader2 size={14} className="animate-spin" /> : "Aplicar"}
+                    </Button>
+                  </div>
+                  {promoError && <p className="text-xs text-red-400 font-bold">{promoError}</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Final order summary */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Resumen del pedido</p>
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{items.length} {items.length === 1 ? "artículo" : "artículos"}</span>
+                <span>{formatDOP(markedUpTotal)}</span>
               </div>
-            </button>
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{t.delivery}</span>
+                <span>{formatDOP(DELIVERY_FEE)}</span>
+              </div>
+              {activeTip > 0 && (
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>Propina</span>
+                  <span>{formatDOP(activeTip)}</span>
+                </div>
+              )}
+              {promoDiscount > 0 && (
+                <div className="flex justify-between text-sm text-green-400 font-bold">
+                  <span>🎟 {appliedPromo?.code}</span>
+                  <span>-{formatDOP(promoDiscount)}</span>
+                </div>
+              )}
+              <div className="border-t border-white/10 pt-2 flex justify-between font-black text-xl">
+                <span>{t.total}</span>
+                <span className="text-yellow-400">{formatDOP(grandTotal)}</span>
+              </div>
+              {/* Address + notes summary */}
+              <div className="border-t border-white/5 pt-2 space-y-1 mt-1">
+                <div className="flex items-start gap-2">
+                  <MapPin size={12} className="text-yellow-400/60 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-gray-500 leading-snug">{address}</p>
+                </div>
+                {notes && (
+                  <div className="flex items-start gap-2">
+                    <FileText size={12} className="text-yellow-400/60 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gray-500 leading-snug line-clamp-2">{notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          {paymentMethod === "card" && (
-            <div className="mt-3 flex items-start gap-2 bg-blue-400/8 border border-blue-400/20 rounded-xl px-3 py-2.5">
-              <Lock size={14} className="text-blue-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-gray-400">El pago con tarjeta estará disponible muy pronto. Elige efectivo para completar tu pedido.</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-yellow-400/20 z-20">
-        <Button
-          className="w-full bg-yellow-400 text-black font-black text-lg h-14 hover:bg-yellow-300 shadow-[0_0_30px_rgba(255,215,0,0.3)] disabled:opacity-50"
-          onClick={handleOrder}
-          disabled={createOrder.isPending || paymentMethod === "card"}
-          data-testid="button-place-order"
-        >
-          {createOrder.isPending ? t.placing : paymentMethod === "card" ? "🔒 Pago con tarjeta no disponible" : t.orderNow(formatDOP(grandTotal))}
-        </Button>
+      {/* Bottom CTA */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-yellow-400/20 z-20">
+        {step < 4 ? (
+          <Button
+            className="w-full bg-yellow-400 text-black font-black text-lg h-14 hover:bg-yellow-300 shadow-[0_0_30px_rgba(255,215,0,0.25)] flex items-center justify-between px-6 disabled:opacity-50"
+            onClick={() => {
+              if (step === 3 && !address.trim()) {
+                toast({ title: t.missingAddress, description: t.addressRequired, variant: "destructive" });
+                return;
+              }
+              setStep((step + 1) as Step);
+            }}
+          >
+            <span className="text-yellow-400/0 text-sm">·</span>
+            <span>
+              {step === 1 && "Continuar"}
+              {step === 2 && (notes.trim() ? "Agregar notas →" : "Continuar sin notas")}
+              {step === 3 && "Elegir pago →"}
+            </span>
+            <ChevronRight size={20} />
+          </Button>
+        ) : (
+          <Button
+            className="w-full bg-yellow-400 text-black font-black text-lg h-14 hover:bg-yellow-300 shadow-[0_0_30px_rgba(255,215,0,0.3)] disabled:opacity-50"
+            onClick={handleOrder}
+            disabled={createOrder.isPending || paymentMethod === "card"}
+            data-testid="button-place-order"
+          >
+            {createOrder.isPending
+              ? t.placing
+              : paymentMethod === "card"
+              ? "🔒 Tarjeta no disponible aún"
+              : `Pedir ahora · ${formatDOP(grandTotal)}`}
+          </Button>
+        )}
       </div>
     </div>
   );
