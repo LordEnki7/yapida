@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
@@ -50,5 +50,24 @@ app.use(
 );
 
 app.use("/api", router);
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ error: "Not found", path: req.path });
+});
+
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const status = (err as any)?.status ?? (err as any)?.statusCode ?? 500;
+  const message =
+    err instanceof Error ? err.message : "Internal server error";
+
+  logger.error({ err, path: req.path, method: req.method }, "Unhandled error");
+
+  res.status(status).json({
+    error: message,
+    ...(process.env.NODE_ENV !== "production" && err instanceof Error
+      ? { stack: err.stack }
+      : {}),
+  });
+});
 
 export default app;
