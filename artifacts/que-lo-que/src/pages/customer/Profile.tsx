@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import RoleSwitcher from "@/components/RoleSwitcher";
 import { ArrowLeft, User, Phone, Mail, MapPin, LogOut, Edit2, Check, X, Trash2, Star } from "lucide-react";
 
 interface SavedAddress {
@@ -292,6 +293,9 @@ export default function CustomerProfile() {
             </div>
           </div>
         )}
+
+        {/* Role Switcher */}
+        <RoleSwitcher currentRole="customer" />
 
         {/* Logout */}
         <Button

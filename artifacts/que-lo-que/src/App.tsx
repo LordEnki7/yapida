@@ -38,6 +38,8 @@ import AdminCommandCenter from "@/pages/admin/CommandCenter";
 import CustomerSupport from "@/pages/customer/Support";
 import BusinessOnboarding from "@/pages/business/Onboarding";
 import DriverOnboarding from "@/pages/driver/Onboarding";
+import DriverProfile from "@/pages/driver/Profile";
+import BusinessProfile from "@/pages/business/Profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,10 +69,12 @@ function Router() {
         <Route path="/driver" component={DriverDashboard} />
         <Route path="/driver/jobs" component={DriverJobs} />
         <Route path="/driver/wallet" component={DriverWallet} />
+        <Route path="/driver/profile" component={DriverProfile} />
         <Route path="/business" component={BusinessDashboard} />
         <Route path="/business/orders" component={BusinessOrders} />
         <Route path="/business/menu" component={BusinessMenu} />
         <Route path="/business/analytics" component={BusinessAnalytics} />
+        <Route path="/business/profile" component={BusinessProfile} />
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/drivers" component={AdminDrivers} />
